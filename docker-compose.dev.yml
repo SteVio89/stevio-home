@@ -1,0 +1,71 @@
+# Local development — Postgres, no SMTP, no payment provider.
+# Usage: docker compose -f docker-compose.dev.yml up --build
+#
+# All required env vars have safe defaults baked in.
+# Override via a .env file or shell exports if needed.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: stevio
+      POSTGRES_USER: stevio
+      POSTGRES_PASSWORD: stevio-dev-password
+    volumes:
+      - dev-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stevio -d stevio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://stevio:stevio-dev-password@postgres:5432/stevio?sslmode=disable"
+      SIGNING_KEY_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      SESSION_SECRET: "0000000000000000000000000000000000000000000000000000000000000000"
+      BASE_URL: "http://localhost:3000"
+      ENV: "development"
+      PORT: "8080"
+      SMTP_FROM: "noreply@localhost"
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@local.host}
+      EMAIL_HASH_SALT: "dev-salt-not-for-production"
+      ASSETS_DIR: /assets
+      APPS_DIR: /apps
+    volumes:
+      - dev-assets:/assets
+      - dev-apps:/apps
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - dev-assets:/data/assets:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  dev-pgdata:
+  dev-assets:
+  dev-apps:

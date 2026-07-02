@@ -1,0 +1,128 @@
+# Flatcar Container Linux provisioning for the stevio-home store.
+#
+# Compile to Ignition and pass as user-data when creating the Hetzner Cloud VM:
+#   butane --strict infra/flatcar/butane.yaml > ignition.json
+#
+# This sets up host-specific concerns only (persistent dirs, secrets file, OS
+# auto-update reboot window, the systemd unit). The deploy manifest itself
+# (docker-compose.deploy.yml + Caddyfile) is copied to /opt/stevio separately so
+# the repo stays the single source of truth — see infra/README.md.
+
+variant: flatcar
+version: 1.1.0
+
+# Flatcar has no password login. Your SSH public key must be embedded here so you
+# can log in as `core` after the rescue-mode install. Paste the contents of your
+# key (e.g. ~/.ssh/id_ed25519.pub) below, replacing the placeholder line.
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - REPLACE_WITH_YOUR_SSH_PUBLIC_KEY
+
+storage:
+  directories:
+    - path: /data/stevio/pgdata
+    - path: /data/stevio/assets
+    - path: /data/stevio/apps
+    - path: /data/stevio/backups
+    - path: /data/stevio/caddy/data
+    - path: /data/stevio/caddy/config
+    - path: /data/stevio/rclone
+    - path: /opt/stevio
+    - path: /etc/stevio
+      mode: 0700
+  files:
+    # Secrets + config. Fill in real values before starting the service.
+    # overwrite:false so re-applying Ignition never clobbers live secrets.
+    - path: /etc/stevio/stevio.env
+      mode: 0600
+      overwrite: false
+      contents:
+        inline: |
+          # Generate the three 64-char hex secrets with the store-cli:
+          #   just gensigningsecret   -> SIGNING_KEY_SECRET
+          #   just gensecret          -> SESSION_SECRET
+          #   just gensalt            -> EMAIL_HASH_SALT
+          POSTGRES_PASSWORD=CHANGE_ME
+          SIGNING_KEY_SECRET=CHANGE_ME
+          SESSION_SECRET=CHANGE_ME
+          EMAIL_HASH_SALT=CHANGE_ME
+          # Public origin + TLS
+          DOMAIN=store.example.com
+          BASE_URL=https://store.example.com
+          ACME_EMAIL=you@example.com
+          # Initial admin(s), comma-separated
+          ADMIN_EMAILS=you@example.com
+          # Pin a specific build for deterministic deploys / rollback:
+          #   IMAGE_TAG=sha-<short>   (defaults to `stable`)
+          IMAGE_TAG=stable
+          # Optional SMTP (unset = magic-link emails log to container stdout)
+          # SMTP_HOST=
+          # SMTP_USER=
+          # SMTP_PASS=
+          # SMTP_FROM=noreply@store.example.com
+    # OS auto-update: apply updates and reboot (window constrained below).
+    - path: /etc/flatcar/update.conf
+      overwrite: true
+      contents:
+        inline: |
+          REBOOT_STRATEGY=reboot
+
+systemd:
+  units:
+    # Confine unattended reboots (from OS auto-updates) to an off-peak window.
+    - name: locksmithd.service
+      dropins:
+        - name: 10-reboot-window.conf
+          contents: |
+            [Service]
+            Environment=LOCKSMITHD_REBOOT_WINDOW_START=03:00
+            Environment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=2h
+
+    # Flatcar ships Docker but not the Compose plugin (/usr is read-only). Install
+    # it into the writable docker cli-plugins dirs so `docker compose` works.
+    - name: docker-compose-install.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install docker compose CLI plugin
+        ConditionPathExists=!/root/.docker/cli-plugins/docker-compose
+        After=network-online.target
+        Wants=network-online.target
+        Before=stevio.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        Environment=COMPOSE_VERSION=v2.29.7
+        ExecStartPre=/usr/bin/mkdir -p /root/.docker/cli-plugins /home/core/.docker/cli-plugins
+        ExecStart=/usr/bin/curl -fsSL -o /root/.docker/cli-plugins/docker-compose https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64
+        ExecStartPost=/usr/bin/chmod +x /root/.docker/cli-plugins/docker-compose
+        ExecStartPost=/usr/bin/cp /root/.docker/cli-plugins/docker-compose /home/core/.docker/cli-plugins/docker-compose
+        ExecStartPost=/usr/bin/chown -R core:core /home/core/.docker
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: stevio.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=stevio-home store (docker compose)
+        Requires=docker.service docker-compose-install.service
+        After=docker.service docker-compose-install.service network-online.target
+        Wants=network-online.target
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt/stevio
+        EnvironmentFile=/etc/stevio/stevio.env
+        # Pull pinned images, then start. `up -d` re-creates only changed services.
+        ExecStartPre=/usr/bin/docker compose -f docker-compose.deploy.yml --env-file /etc/stevio/stevio.env pull
+        ExecStart=/usr/bin/docker compose -f docker-compose.deploy.yml --env-file /etc/stevio/stevio.env up -d
+        ExecStop=/usr/bin/docker compose -f docker-compose.deploy.yml --env-file /etc/stevio/stevio.env down
+
+        [Install]
+        WantedBy=multi-user.target

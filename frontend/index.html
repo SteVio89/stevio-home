@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Store</title>
+    <meta name="description" content="Buy once, own forever. No subscriptions." />
+    <meta name="robots" content="index, follow" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SteVio" />
+    <meta property="og:title" content="SteVio" />
+    <meta property="og:description" content="Buy once, own forever. No subscriptions." />
+    <meta property="og:url" content="/" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="SteVio" />
+    <meta name="twitter:description" content="Buy once, own forever. No subscriptions." />
+    <!-- FOWT prevention: apply theme before React renders. External same-origin
+         file (not inline) so it runs under CSP script-src 'self' without 'unsafe-inline'. -->
+    <script src="/theme-init.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

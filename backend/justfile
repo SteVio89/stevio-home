@@ -1,0 +1,20 @@
+build:
+    go build -o bin/server .
+
+run:
+    go run .
+
+test:
+    go test ./...
+
+vet:
+    go vet ./...
+
+gensecret:
+    go run ./cmd/store-cli generate secret
+
+gensigningsecret:
+    go run ./cmd/store-cli generate signing-secret
+
+gensalt:
+    go run ./cmd/store-cli generate salt

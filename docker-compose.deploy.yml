@@ -1,0 +1,153 @@
+# Immutable-host deployment. Runs pre-built images pulled from GHCR — no local
+# build. Caddy is the only public ingress and terminates TLS (Let's Encrypt).
+#
+# Operator supplies configuration via an env file (see backend/.env.example and
+# infra/README.md). Pin a specific build by setting IMAGE_TAG=sha-<short>;
+# it defaults to the movable `stable` tag.
+#
+#   docker compose -f docker-compose.deploy.yml --env-file /etc/stevio/stevio.env up -d
+#
+# To also push backups off-site, add: --profile offsite
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stevio}
+      POSTGRES_USER: ${POSTGRES_USER:-stevio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /data/stevio/pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    # Bound memory so a spike in one container can't OOM the others on a small
+    # VM. Tune these to your host — they are relative isolation, not hard sizing.
+    mem_limit: ${POSTGRES_MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stevio} -d ${POSTGRES_DB:-stevio}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: ghcr.io/stevio89/stevio-home-backend:${IMAGE_TAG:-stable}
+    pull_policy: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # sslmode=disable is intentional: Postgres is only reachable on the private
+      # docker network (never published), so TLS between backend and DB would add
+      # cost without benefit here. If you ever move Postgres to a separate host,
+      # switch this to sslmode=require (or verify-full) and provision certs.
+      DATABASE_URL: ${DATABASE_URL:-postgres://stevio:${POSTGRES_PASSWORD}@postgres:5432/stevio?sslmode=disable}
+      SIGNING_KEY_SECRET: ${SIGNING_KEY_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      EMAIL_HASH_SALT: ${EMAIL_HASH_SALT}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
+      BASE_URL: ${BASE_URL:?set BASE_URL to your public https origin}
+      ENV: production
+      PORT: "8080"
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      ASSETS_DIR: /assets
+      APPS_DIR: /apps
+    volumes:
+      - /data/stevio/assets:/assets
+      - /data/stevio/apps:/apps
+    restart: unless-stopped
+    mem_limit: ${BACKEND_MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    image: ghcr.io/stevio89/stevio-home-frontend:${IMAGE_TAG:-stable}
+    pull_policy: always
+    depends_on:
+      - backend
+    volumes:
+      - /data/stevio/assets:/data/assets:ro
+    restart: unless-stopped
+    mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN to your public hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL for Let's Encrypt}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /data/stevio/caddy/data:/data
+      - /data/stevio/caddy/config:/config
+    restart: unless-stopped
+    mem_limit: ${CADDY_MEM_LIMIT:-128m}
+
+  # Scheduled pg_dump with rotation. Writes compressed dumps to the host so they
+  # survive container/image replacement. The `offsite` service below can ship
+  # them elsewhere.
+  backup:
+    image: prodrigestivill/postgres-backup-local:17-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-stevio}
+      POSTGRES_USER: ${POSTGRES_USER:-stevio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-6}
+      HEALTHCHECK_PORT: "8080"
+    volumes:
+      - /data/stevio/backups:/backups
+    restart: unless-stopped
+    mem_limit: ${BACKUP_MEM_LIMIT:-256m}
+
+  # Off-site copy of /data/stevio/backups. Disabled by default (profile: offsite).
+  # Configure an rclone remote named `offsite` in /data/stevio/rclone/rclone.conf
+  # and run with: docker compose -f docker-compose.deploy.yml --profile offsite up -d
+  #
+  # IMPORTANT: the dumps under /backups are PLAINTEXT SQL containing customer PII
+  # and order history. Do NOT sync them straight to third-party storage. Make
+  # `offsite` an rclone *crypt* remote wrapping the real backend (a crypt remote
+  # encrypts client-side, so the provider only ever sees ciphertext), or the leak
+  # of the storage credentials becomes a reportable data breach. See infra/README.md.
+  #
+  # The image is pinned (not :latest) so an unattended pull can't bring in a
+  # regressed/backdoored build against your backups. Bump RCLONE_VERSION deliberately.
+  offsite:
+    image: rclone/rclone:${RCLONE_VERSION:-1.69.1}
+    profiles: ["offsite"]
+    depends_on:
+      - backup
+    entrypoint: /bin/sh
+    command: >
+      -c 'while true; do
+            rclone sync /backups offsite:${OFFSITE_PATH:-stevio-backups} --config /config/rclone/rclone.conf;
+            sleep ${OFFSITE_INTERVAL_SECONDS:-3600};
+          done'
+    volumes:
+      - /data/stevio/backups:/backups:ro
+      - /data/stevio/rclone:/config/rclone:ro
+    restart: unless-stopped
+    mem_limit: ${OFFSITE_MEM_LIMIT:-256m}

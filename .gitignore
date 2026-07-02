@@ -1,0 +1,57 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Go
+backend/bin/
+*.exe
+*.exe~
+*.test
+*.out
+
+# Go build artifacts
+*.dll
+*.so
+*.dylib
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Deploy secrets — never commit real values. butane.local.yaml holds the filled
+# secrets; ignition.json is generated from it and also contains them.
+*.local.yaml
+ignition.json
+infra/flatcar/ignition.json
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+docker-compose.override.yml
+
+# Claude Code local
+.claude.local.md
+settings.local.json
+
+# Kamal
+
+.kamal
+datenschutz.md
+impressum.md
+.claude/worktrees/
+
+.direnv/

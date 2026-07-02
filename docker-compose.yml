@@ -1,0 +1,73 @@
+# Full-stack build for local prod-like runs: builds the backend and frontend
+# images from source. (CI builds the two Dockerfiles directly; see
+# .github/workflows/release.yml.) For the actual immutable-host deployment use
+# docker-compose.deploy.yml (pulls pre-built GHCR images + Caddy TLS + backups);
+# see infra/README.md.
+#
+# DATABASE_URL is env-driven: the embedded postgres service below suits single-VM
+# use, or point DATABASE_URL at an external/managed Postgres instead.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stevio}
+      POSTGRES_USER: ${POSTGRES_USER:-stevio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /data/stevio/pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stevio} -d ${POSTGRES_DB:-stevio}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://stevio:${POSTGRES_PASSWORD}@postgres:5432/stevio?sslmode=disable}
+      SIGNING_KEY_SECRET: ${SIGNING_KEY_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      ENV: ${ENV:-production}
+      PORT: "8080"
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      EMAIL_HASH_SALT: ${EMAIL_HASH_SALT}
+      ASSETS_DIR: /assets
+      APPS_DIR: /apps
+    volumes:
+      - /data/stevio/assets:/assets
+      - /data/stevio/apps:/apps
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - /data/stevio/assets:/data/assets:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

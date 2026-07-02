@@ -1,0 +1,80 @@
+# Minimal build-from-source example for production deployment.
+# Copy this file to your server (e.g. as docker-compose.yml there) and fill in
+# the environment variables. See backend/.env.example for a description of each
+# variable. For the full production setup (Caddy TLS, pinned GHCR images,
+# backups) use docker-compose.deploy.yml as described in infra/README.md.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stevio}
+      POSTGRES_USER: ${POSTGRES_USER:-stevio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # required
+    volumes:
+      - /data/stevio/pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stevio} -d ${POSTGRES_DB:-stevio}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Required
+      DATABASE_URL: postgres://stevio:${POSTGRES_PASSWORD}@postgres:5432/stevio?sslmode=disable
+      SIGNING_KEY_SECRET: ${SIGNING_KEY_SECRET}           # generate with: store-cli generate signing-secret
+      SESSION_SECRET: ${SESSION_SECRET}                   # generate with: store-cli generate secret
+      EMAIL_HASH_SALT: ${EMAIL_HASH_SALT}                 # generate with: store-cli generate salt
+
+      # SMTP (optional — logs to stdout when unset)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@example.com}
+
+      # App settings
+      BASE_URL: ${BASE_URL:-http://localhost:3000}
+      ENV: ${ENV:-production}
+      PORT: "8080"
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}                     # comma-separated admin email addresses
+
+      # Payment provider credentials are admin-managed via the /admin UI
+      # (stored encrypted in site_settings). No env vars required.
+
+      # File storage
+      ASSETS_DIR: /assets
+      APPS_DIR: /apps
+    volumes:
+      - /data/stevio/assets:/assets
+      - /data/stevio/apps:/apps
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - /data/stevio/assets:/data/assets:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

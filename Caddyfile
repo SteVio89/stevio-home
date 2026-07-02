@@ -1,0 +1,17 @@
+# TLS terminator and public ingress. Caddy provisions and auto-renews a
+# Let's Encrypt certificate for $DOMAIN and reverse-proxies to the frontend
+# (nginx) container on the internal network.
+#
+# Caddy sets X-Forwarded-For to the real client IP and, with the default empty
+# trusted_proxies, ignores any client-supplied X-Forwarded-* — so the value
+# nginx receives is the true visitor address (see frontend/nginx.conf realip).
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+	reverse_proxy frontend:80
+}
