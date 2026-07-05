@@ -2,24 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { isSafeCheckoutURL, isSafeDownloadURL } from './safeUrl';
 
 describe('isSafeCheckoutURL', () => {
-  it('accepts https URLs on paddle.com and its subdomains', () => {
-    expect(isSafeCheckoutURL('https://paddle.com')).toBe(true);
-    expect(isSafeCheckoutURL('https://checkout.paddle.com/pay/txn_123')).toBe(true);
-    expect(isSafeCheckoutURL('https://sandbox-checkout.paddle.com/pay/txn_123')).toBe(true);
-  });
-
-  it('rejects arbitrary external hosts', () => {
+  it('rejects all absolute/external URLs (checkout is same-origin only now)', () => {
+    // Paddle Billing opens an in-page overlay; there is no external redirect.
+    expect(isSafeCheckoutURL('https://paddle.com')).toBe(false);
+    expect(isSafeCheckoutURL('https://checkout.paddle.com/pay/txn_123')).toBe(false);
     expect(isSafeCheckoutURL('https://evil.com/pay')).toBe(false);
     expect(isSafeCheckoutURL('https://example.com')).toBe(false);
   });
 
-  it('rejects suffix-bypass hosts that merely contain paddle.com', () => {
-    // Classic allowlist bypass: attacker controls paddle.com.evil.com.
-    expect(isSafeCheckoutURL('https://paddle.com.evil.com/pay')).toBe(false);
-    expect(isSafeCheckoutURL('https://notpaddle.com/pay')).toBe(false);
-  });
-
-  it('rejects non-https schemes on allowed hosts', () => {
+  it('rejects non-https and non-http schemes', () => {
     expect(isSafeCheckoutURL('http://checkout.paddle.com/pay')).toBe(false);
     expect(isSafeCheckoutURL('javascript:alert(1)')).toBe(false);
   });

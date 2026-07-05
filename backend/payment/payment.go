@@ -27,10 +27,15 @@ type CheckoutParams struct {
 	ConsentGivenAt string // ISO-8601 timestamp of withdrawal waiver consent; may be empty
 }
 
-// CheckoutSession is returned to the frontend as a redirect URL.
+// CheckoutSession is returned to the frontend to start a checkout. Providers
+// populate the fields their client-side flow needs:
+//   - Paddle Billing opens an in-page Paddle.js overlay, so it sets
+//     TransactionID (the txn_… id the browser passes to Paddle.Checkout.open).
+//   - The mock provider redirects the browser, so it sets URL.
 type CheckoutSession struct {
-	URL       string // redirect URL for the customer
-	SessionID string // provider-specific idempotency key stored in orders.payment_session
+	URL           string // redirect URL for the customer (mock provider)
+	TransactionID string // Paddle transaction id (txn_…) for the client-side overlay
+	SessionID     string // provider-specific idempotency key stored in orders.payment_session
 }
 
 // Event represents a confirmed purchase or refund from any payment provider.
@@ -46,7 +51,9 @@ type Event struct {
 
 // Provider is the interface any payment backend must implement.
 type Provider interface {
-	// CreateCheckout creates a hosted payment page and returns the redirect URL + session ID.
+	// CreateCheckout creates a provider checkout and returns a CheckoutSession
+	// carrying the session ID plus whatever the provider's client-side flow
+	// needs (Paddle: TransactionID for the overlay; mock: URL for a redirect).
 	CreateCheckout(ctx context.Context, p CheckoutParams) (CheckoutSession, error)
 
 	// ParseWebhook validates the raw webhook request body and headers,

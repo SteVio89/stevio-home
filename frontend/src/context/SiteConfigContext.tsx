@@ -9,6 +9,8 @@ export interface SiteConfig {
   maintenance_mode: boolean;
   payment_enabled: boolean;
   payment_provider: string;
+  paddle_client_token: string;
+  paddle_environment: string;
   max_activations: number;
   base_url: string;
   locales: LocaleInfo[];
@@ -26,6 +28,8 @@ const defaults: SiteConfig = {
   maintenance_mode: false,
   payment_enabled: true,
   payment_provider: '',
+  paddle_client_token: '',
+  paddle_environment: 'production',
   max_activations: 3,
   base_url: '',
   locales: defaultLocales,
@@ -54,6 +58,8 @@ export function SiteConfigProvider({ children }: { children: React.ReactNode }) 
           maintenance_mode: raw.maintenance_mode,
           payment_enabled: raw.payment_enabled,
           payment_provider: raw.payment_provider ?? '',
+          paddle_client_token: raw.paddle_client_token ?? '',
+          paddle_environment: raw.paddle_environment ?? 'production',
           max_activations: raw.max_activations,
           base_url: raw.base_url,
           locales: Array.isArray(raw.locales) && raw.locales.length > 0

@@ -628,12 +628,18 @@ export function adminRestoreAutoDiscount(id: string): Promise<void> {
 
 // ── Checkout ───────────────────────────────────────────────────────────────
 
+export interface CheckoutSession {
+  url: string;            // mock provider: redirect target
+  transaction_id: string; // Paddle: txn_… id for the client-side overlay
+  session_id: string;     // idempotency key; passed to the success page
+}
+
 export function createCheckoutSession(
   appId: string,
   discountCode: string,
   consentTimestamp: string,
-): Promise<{ url: string }> {
-  return request<{ url: string }>('/checkout/session', {
+): Promise<CheckoutSession> {
+  return request<CheckoutSession>('/checkout/session', {
     method: 'POST',
     body: JSON.stringify({
       app_id: appId,
@@ -666,6 +672,8 @@ export interface SiteConfig {
   maintenance_mode: boolean;
   payment_enabled: boolean;
   payment_provider: string;
+  paddle_client_token: string;
+  paddle_environment: string;
   max_activations: number;
   base_url: string;
   locales: Array<{ code: string; name: string; is_default: boolean }>;

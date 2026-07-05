@@ -146,8 +146,12 @@ func (h *CheckoutHandler) CreateCheckout(c *app.Ctx) error {
 		return apierr.ErrInternal()
 	}
 
+	// transaction_id drives the Paddle.js overlay; url is the mock provider's
+	// redirect target; session_id lets the success page verify fulfillment.
 	return c.JSON(http.StatusOK, map[string]string{
-		"url": session.URL,
+		"url":            session.URL,
+		"transaction_id": session.TransactionID,
+		"session_id":     session.SessionID,
 	})
 }
 

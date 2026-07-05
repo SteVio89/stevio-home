@@ -79,7 +79,8 @@ func (p *Provider) baseURL() string {
 
 // CreateCheckout creates a Paddle transaction with a non-catalog item built
 // from params (product name, tax category, price, currency) and returns its
-// hosted-checkout URL. No Paddle-side catalog is involved — every field lives
+// transaction id, which the frontend hands to Paddle.Checkout.open to render
+// the in-page overlay. No Paddle-side catalog is involved — every field lives
 // in our DB and is passed inline per checkout.
 func (p *Provider) CreateCheckout(ctx context.Context, params payment.CheckoutParams) (payment.CheckoutSession, error) {
 	if p.apiKey == "" {
@@ -124,14 +125,18 @@ func (p *Provider) CreateCheckout(ctx context.Context, params payment.CheckoutPa
 		return payment.CheckoutSession{}, fmt.Errorf("paddle: create transaction: %w", err)
 	}
 
-	url := extractCheckoutURL(tx)
-	if url == "" {
-		return payment.CheckoutSession{}, errors.New("paddle: response missing checkout url")
+	// Billing checkout runs as an in-page Paddle.js overlay: the browser calls
+	// Paddle.Checkout.open({ transactionId }). The transaction id is what the
+	// frontend needs; the hosted checkout.url (default payment link + _ptxn) is
+	// carried along only as a fallback for non-overlay clients.
+	if tx.ID == "" {
+		return payment.CheckoutSession{}, errors.New("paddle: response missing transaction id")
 	}
 
 	return payment.CheckoutSession{
-		URL:       url,
-		SessionID: sessionID,
+		URL:           extractCheckoutURL(tx),
+		TransactionID: tx.ID,
+		SessionID:     sessionID,
 	}, nil
 }
 

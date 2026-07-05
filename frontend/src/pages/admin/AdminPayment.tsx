@@ -49,6 +49,9 @@ export default function AdminPayment() {
   const [compoundProvider, setCompoundProvider] = useState('');
   const [paddleApiKey, setPaddleApiKey] = useState<Secret>(emptySecret);
   const [paddleWebhookSecret, setPaddleWebhookSecret] = useState<Secret>(emptySecret);
+  // Client-side token is browser-safe (shipped to the frontend via /config), so
+  // it is a plain field, not a masked Secret like the API key / webhook secret.
+  const [paddleClientToken, setPaddleClientToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -60,6 +63,7 @@ export default function AdminPayment() {
         setCompoundProvider(composeProvider(s.payment_provider ?? '', s.paddle_environment ?? ''));
         setPaddleApiKey(secretFromServer(s.paddle_api_key));
         setPaddleWebhookSecret(secretFromServer(s.paddle_webhook_secret));
+        setPaddleClientToken(s.paddle_client_token ?? '');
       })
       .catch((err) => setError(err instanceof APIError ? err.message : 'Failed to load settings'))
       .finally(() => setLoading(false));
@@ -77,6 +81,7 @@ export default function AdminPayment() {
     ];
     if (provider === 'paddle') {
       patches.push(['paddle_environment', env || 'production']);
+      patches.push(['paddle_client_token', paddleClientToken.trim()]);
       if (paddleApiKey.value) patches.push(['paddle_api_key', paddleApiKey.value]);
       if (paddleWebhookSecret.value) patches.push(['paddle_webhook_secret', paddleWebhookSecret.value]);
     }
@@ -176,6 +181,23 @@ export default function AdminPayment() {
                     maxLength={4096}
                   />
                   <small>From Paddle → Developer Tools → Notifications</small>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="paddle-client-token">Client-side token</label>
+                  <input
+                    id="paddle-client-token"
+                    type="text"
+                    value={paddleClientToken}
+                    onChange={(e) => setPaddleClientToken(e.target.value)}
+                    placeholder="live_… or test_…"
+                    maxLength={4096}
+                  />
+                  <small>
+                    From Paddle → Developer Tools → Authentication → Client-side tokens.
+                    Browser-safe; used to open the in-page checkout overlay.
+                  </small>
                 </div>
               </div>
             </>

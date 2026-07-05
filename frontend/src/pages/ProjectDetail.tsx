@@ -17,6 +17,8 @@ import { useAuth } from '../context/AuthContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { useLocale } from '../context/LocaleContext';
 import { isSafeCheckoutURL } from '../utils/safeUrl';
+import { getPaddle, setPaddleEventHandler } from '../utils/paddle';
+import { CheckoutEventNames } from '@paddle/paddle-js';
 import WithdrawalConsentModal from '../components/WithdrawalConsentModal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PurchaseSidebar } from '../components/PurchaseSidebar';
@@ -39,7 +41,7 @@ export default function ProjectDetail() {
   const [ownership, setOwnership] = useState<OwnershipStatus | null>(null);
   const { loggedIn } = useAuth();
   const navigate = useNavigate();
-  const { currency_code, base_url } = useSiteConfig();
+  const { currency_code, base_url, payment_provider, paddle_client_token, paddle_environment } = useSiteConfig();
   const { locale } = useLocale();
   const { t } = useTranslation();
 
@@ -150,9 +152,34 @@ export default function ProjectDetail() {
     try {
       const codeToSend = discount ? discountCode.trim() : '';
       const consentTimestamp = new Date().toISOString();
-      const { url } = await createCheckoutSession(commerce.id, codeToSend, consentTimestamp);
-      if (isSafeCheckoutURL(url)) {
-        window.location.href = url;
+      const session = await createCheckoutSession(commerce.id, codeToSend, consentTimestamp);
+
+      if (payment_provider === 'paddle') {
+        // Paddle Billing: open the in-page overlay for the created transaction.
+        if (!paddle_client_token || !session.transaction_id) {
+          setCheckoutError(t('commerce.checkout_error'));
+          return;
+        }
+        const paddle = await getPaddle(paddle_client_token, paddle_environment);
+        if (!paddle) {
+          setCheckoutError(t('commerce.checkout_error'));
+          return;
+        }
+        // Fulfillment happens via webhook; the success page verifies by session_id.
+        setPaddleEventHandler((e) => {
+          if (e.name === CheckoutEventNames.CHECKOUT_COMPLETED) {
+            setPaddleEventHandler(null);
+            paddle.Checkout.close();
+            navigate(`/${locale}/success?session_id=${encodeURIComponent(session.session_id)}`);
+          }
+        });
+        paddle.Checkout.open({ transactionId: session.transaction_id });
+        return;
+      }
+
+      // Mock provider: redirect to its simulated payment page.
+      if (isSafeCheckoutURL(session.url)) {
+        window.location.href = session.url;
       } else {
         setCheckoutError(t('commerce.checkout_invalid_url'));
       }

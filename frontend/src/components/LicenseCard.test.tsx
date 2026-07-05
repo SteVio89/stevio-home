@@ -36,6 +36,8 @@ const mockConfig: SiteConfig = {
   maintenance_mode: false,
   payment_enabled: true,
   payment_provider: 'paddle',
+  paddle_client_token: 'test_token',
+  paddle_environment: 'sandbox',
   max_activations: 3,
   base_url: 'http://localhost:3000',
   locales: [

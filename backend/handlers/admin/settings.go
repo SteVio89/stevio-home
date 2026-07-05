@@ -22,6 +22,7 @@ var validSettingKeys = map[string]bool{
 	"payment_provider":           true,
 	"paddle_api_key":             true,
 	"paddle_webhook_secret":      true,
+	"paddle_client_token":        true,
 	"paddle_environment":         true,
 	"maintenance_mode":           true,
 	"support_notification_email": true,

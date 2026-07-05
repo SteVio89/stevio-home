@@ -47,9 +47,13 @@ func (h *StoreHandler) GetPublicConfig(c *app.Ctx) error {
 		"maintenance_mode": parseBoolFlag(s["maintenance_mode"]),
 		"payment_enabled":  s["payment_provider"] != "",
 		"payment_provider": s["payment_provider"],
-		"max_activations":  parseIntDefault(s["max_activations"], 3),
-		"base_url":         h.cfg.BaseURL,
-		"locales":          c.Locales().EnabledLocales(c.R.Context()),
+		// Paddle client-side token is browser-safe by design; the frontend needs
+		// it (plus the environment) to initialise Paddle.js for the overlay.
+		"paddle_client_token": s["paddle_client_token"],
+		"paddle_environment":  orDefault(s["paddle_environment"], "production"),
+		"max_activations":     parseIntDefault(s["max_activations"], 3),
+		"base_url":            h.cfg.BaseURL,
+		"locales":             c.Locales().EnabledLocales(c.R.Context()),
 	})
 }
 
