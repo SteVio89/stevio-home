@@ -34,10 +34,11 @@ const (
 	verifyTolerance = 5 * time.Minute
 
 	// defaultTaxCategory is the fallback used when a checkout arrives without
-	// an app-level tax_category set. "digital-goods" is always enabled on a
-	// Paddle account (other categories require explicit activation), so this
-	// value is safe across fresh sandbox accounts.
-	defaultTaxCategory = "digital-goods"
+	// an app-level tax_category set. "standard" is Paddle's "Standard digital
+	// goods" — the pre-approved Default category for downloadable software, and
+	// what stevio sells. (The "digital-goods" slug is a different, narrower
+	// category for non-software media files and is not activated by default.)
+	defaultTaxCategory = "standard"
 )
 
 // ErrSignatureInvalid is returned by ParseWebhook when signature verification

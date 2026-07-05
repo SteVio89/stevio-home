@@ -98,7 +98,8 @@ func GetAppIDByBundleID(ctx context.Context, db *sql.DB, bundleID string) (strin
 }
 
 // InsertAppTx creates a new commerce app attached to a project, inside a transaction.
-// An empty taxCategory is coalesced to the default "digital-goods".
+// An empty taxCategory is coalesced to the default "standard" (Paddle's
+// pre-approved "Standard digital goods" category for downloadable software).
 func InsertAppTx(ctx context.Context, tx *sql.Tx, projectID, bundleID string, priceCents int, purchaseMode, taxCategory string) (*models.App, error) {
 	if purchaseMode == "" {
 		purchaseMode = "always_new_license"
@@ -106,7 +107,7 @@ func InsertAppTx(ctx context.Context, tx *sql.Tx, projectID, bundleID string, pr
 		return nil, ErrInvalidPurchaseMode
 	}
 	if taxCategory == "" {
-		taxCategory = "digital-goods"
+		taxCategory = "standard"
 	} else if !IsValidTaxCategory(taxCategory) {
 		return nil, ErrInvalidTaxCategory
 	}
@@ -125,7 +126,8 @@ func InsertAppTx(ctx context.Context, tx *sql.Tx, projectID, bundleID string, pr
 
 // UpdateApp updates pricing/purchase_mode/tax_category on a commerce app. project_id
 // and bundle_id are immutable after create — change them via re-create + soft-delete.
-// An empty taxCategory is coalesced to the default "digital-goods".
+// An empty taxCategory is coalesced to the default "standard" (Paddle's
+// pre-approved "Standard digital goods" category for downloadable software).
 func UpdateApp(ctx context.Context, db *sql.DB, id string, priceCents int, purchaseMode, taxCategory string) error {
 	if purchaseMode == "" {
 		purchaseMode = "always_new_license"
@@ -133,7 +135,7 @@ func UpdateApp(ctx context.Context, db *sql.DB, id string, priceCents int, purch
 		return ErrInvalidPurchaseMode
 	}
 	if taxCategory == "" {
-		taxCategory = "digital-goods"
+		taxCategory = "standard"
 	} else if !IsValidTaxCategory(taxCategory) {
 		return ErrInvalidTaxCategory
 	}

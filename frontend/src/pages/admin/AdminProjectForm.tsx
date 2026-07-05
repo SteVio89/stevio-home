@@ -40,14 +40,16 @@ const PURCHASE_MODES = [
 ];
 
 // Paddle tax categories (must match backend queries.IsValidTaxCategory).
-// "digital-goods" is enabled on every Paddle account by default; others must
-// be explicitly activated in the Paddle dashboard before use.
+// "standard" is Paddle's "Standard digital goods" — the pre-approved Default
+// category for downloadable software (what we sell). The other categories,
+// including the narrow "digital-goods" (non-software media files), must be
+// explicitly requested and approved in the Paddle dashboard before use.
 const TAX_CATEGORIES = [
-  { value: 'digital-goods', label: 'Digital Goods (default)' },
+  { value: 'standard', label: 'Standard Digital Goods (default)' },
   { value: 'ebooks', label: 'eBooks' },
   { value: 'saas', label: 'SaaS' },
   { value: 'software-programming-services', label: 'Software / Programming Services' },
-  { value: 'standard', label: 'Standard (physical goods)' },
+  { value: 'digital-goods', label: 'Digital Goods (media files, not software)' },
   { value: 'professional-services', label: 'Professional Services' },
   { value: 'implementation-services', label: 'Implementation Services' },
   { value: 'training-services', label: 'Training Services' },
@@ -90,7 +92,7 @@ export default function AdminProjectForm() {
   const [bundleId, setBundleId] = useState('');
   const [priceCents, setPriceCents] = useState('');
   const [purchaseMode, setPurchaseMode] = useState('always_new_license');
-  const [taxCategory, setTaxCategory] = useState('digital-goods');
+  const [taxCategory, setTaxCategory] = useState('standard');
   const [appId, setAppId] = useState<string | null>(null); // populated on edit when commerce exists
   const [originalFlavor, setOriginalFlavor] = useState<ProjectFlavor>('showcase');
 
@@ -173,7 +175,7 @@ export default function AdminProjectForm() {
             setBundleId(commerceApp.bundle_id);
             setPriceCents(String(commerceApp.price_cents));
             setPurchaseMode(commerceApp.purchase_mode || 'always_new_license');
-            setTaxCategory(commerceApp.tax_category || 'digital-goods');
+            setTaxCategory(commerceApp.tax_category || 'standard');
           } else {
             computedFlavor = 'showcase';
           }

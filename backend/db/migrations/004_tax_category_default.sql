@@ -1,0 +1,11 @@
+-- Correct the apps.tax_category column default.
+--
+-- Migration 003 set the default to 'digital-goods', but in Paddle that slug is
+-- a narrow category for non-software media files that is NOT activated by
+-- default. The pre-approved Default category for downloadable software (what
+-- stevio sells) is 'standard', shown as "Standard digital goods" in Paddle.
+--
+-- This is a schema-only change: it alters the DEFAULT for future inserts and
+-- deliberately leaves existing rows untouched. Re-classify any already-saved
+-- apps by re-saving them in the admin UI.
+ALTER TABLE apps ALTER COLUMN tax_category SET DEFAULT 'standard';
