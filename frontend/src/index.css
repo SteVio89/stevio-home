@@ -264,6 +264,13 @@ body {
   padding: 2rem 1rem;
 }
 
+/* Landing is the only public route that wants a wide, full-bleed layout;
+   let it escape the narrow 720px reading column so its project grid can
+   honor its own max-width. Scoped via :has() so admin/content routes stay capped. */
+.container:has(> .landing-page) {
+  max-width: none;
+}
+
 .admin-page-container {
   max-width: 1100px;
   margin: 0 auto;
