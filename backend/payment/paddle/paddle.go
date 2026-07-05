@@ -111,29 +111,9 @@ func (p *Provider) CreateCheckout(ctx context.Context, params payment.CheckoutPa
 		taxCategory = defaultTaxCategory
 	}
 
-	items := []sdk.CreateTransactionItems{
-		*sdk.NewCreateTransactionItemsTransactionItemCreateWithProduct(
-			&sdk.TransactionItemCreateWithProduct{
-				Quantity: 1,
-				Price: sdk.TransactionPriceCreateWithProduct{
-					Description: params.AppName + " license",
-					TaxMode:     sdk.TaxModeAccountSetting,
-					UnitPrice: sdk.Money{
-						Amount:       strconv.Itoa(params.PriceCents),
-						CurrencyCode: sdk.CurrencyCode(params.CurrencyCode),
-					},
-					Product: sdk.TransactionSubscriptionProductCreate{
-						Name:        params.AppName,
-						TaxCategory: sdk.TaxCategory(taxCategory),
-					},
-				},
-			},
-		),
-	}
-
 	cc := sdk.CurrencyCode(params.CurrencyCode)
 	req := &sdk.CreateTransactionRequest{
-		Items:        items,
+		Items:        buildTransactionItems(params, taxCategory),
 		CustomData:   custom,
 		CurrencyCode: &cc,
 	}
@@ -152,6 +132,38 @@ func (p *Provider) CreateCheckout(ctx context.Context, params payment.CheckoutPa
 		URL:       url,
 		SessionID: sessionID,
 	}, nil
+}
+
+// buildTransactionItems assembles the single non-catalog line item Paddle
+// charges for. Extracted from CreateCheckout so the exact JSON shape can be
+// asserted in a unit test without a network client.
+func buildTransactionItems(params payment.CheckoutParams, taxCategory string) []sdk.CreateTransactionItems {
+	return []sdk.CreateTransactionItems{
+		*sdk.NewCreateTransactionItemsTransactionItemCreateWithProduct(
+			&sdk.TransactionItemCreateWithProduct{
+				Quantity: 1,
+				Price: sdk.TransactionPriceCreateWithProduct{
+					Description: params.AppName + " license",
+					TaxMode:     sdk.TaxModeAccountSetting,
+					UnitPrice: sdk.Money{
+						Amount:       strconv.Itoa(params.PriceCents),
+						CurrencyCode: sdk.CurrencyCode(params.CurrencyCode),
+					},
+					// Lock the purchasable quantity to exactly 1. The SDK's
+					// `json:"quantity,omitempty"` is a no-op on this struct value,
+					// so a zero PriceQuantity serializes as `"quantity":{}`, which
+					// Paddle rejects (minimum/maximum required). Setting 1..1 also
+					// hides the quantity stepper on hosted checkout, keeping one
+					// license per order in line with fulfillOrder.
+					Quantity: sdk.PriceQuantity{Minimum: 1, Maximum: 1},
+					Product: sdk.TransactionSubscriptionProductCreate{
+						Name:        params.AppName,
+						TaxCategory: sdk.TaxCategory(taxCategory),
+					},
+				},
+			},
+		),
+	}
 }
 
 // ParseWebhook verifies the Paddle-Signature via the SDK and returns a typed

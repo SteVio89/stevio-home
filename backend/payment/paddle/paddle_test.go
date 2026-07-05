@@ -1,8 +1,57 @@
 package paddle
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/SteVio89/stevio-home/payment"
 )
+
+// TestBuildTransactionItems_QuantityShape guards the non-catalog line-item JSON
+// against a regression that only surfaces against the live Paddle API: the SDK's
+// PriceQuantity is a struct value with a `json:"quantity,omitempty"` tag, and
+// omitempty is a no-op on structs — so a zero value marshals to `"quantity":{}`,
+// which Paddle rejects with "minimum/maximum is required". This test asserts the
+// serialized price.quantity is a fully-specified 1..1 object, never empty.
+func TestBuildTransactionItems_QuantityShape(t *testing.T) {
+	items := buildTransactionItems(payment.CheckoutParams{
+		AppName:      "MyApp",
+		PriceCents:   1900,
+		CurrencyCode: "EUR",
+	}, "standard")
+
+	raw, err := json.Marshal(items[0])
+	if err != nil {
+		t.Fatalf("marshal item: %v", err)
+	}
+
+	var item struct {
+		Quantity int `json:"quantity"`
+		Price    struct {
+			Quantity *struct {
+				Minimum *int `json:"minimum"`
+				Maximum *int `json:"maximum"`
+			} `json:"quantity"`
+		} `json:"price"`
+	}
+	if err := json.Unmarshal(raw, &item); err != nil {
+		t.Fatalf("unmarshal item: %v", err)
+	}
+
+	if item.Quantity != 1 {
+		t.Errorf("item quantity: want 1, got %d", item.Quantity)
+	}
+	if item.Price.Quantity == nil {
+		t.Fatalf("price.quantity missing from payload: %s", raw)
+	}
+	if item.Price.Quantity.Minimum == nil || item.Price.Quantity.Maximum == nil {
+		t.Fatalf("price.quantity must have minimum and maximum (Paddle rejects empty {}): %s", raw)
+	}
+	if *item.Price.Quantity.Minimum != 1 || *item.Price.Quantity.Maximum != 1 {
+		t.Errorf("price.quantity: want {1,1}, got {%d,%d}",
+			*item.Price.Quantity.Minimum, *item.Price.Quantity.Maximum)
+	}
+}
 
 // These tests focus on the JSON-parsing helpers that do not require the SDK
 // client (network). Signature-verification behavior is fully owned by the SDK;
