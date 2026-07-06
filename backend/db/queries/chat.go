@@ -53,7 +53,8 @@ func scanConversation(scan func(dest ...any) error) (*models.ChatConversation, e
 	if err != nil {
 		return nil, err
 	}
-	if email.Valid {
+	// email is NOT NULL DEFAULT '', so '' is the "not shared" sentinel, not NULL.
+	if email.Valid && email.String != "" {
 		c.Email = &email.String
 	}
 	if notifiedAt.Valid {
@@ -205,7 +206,7 @@ func ListConversations(ctx context.Context, db *sql.DB, filter ChatListFilter) (
 
 	offset := (filter.Page - 1) * filter.PerPage
 	rows, err := db.QueryContext(ctx, `
-		SELECT cc.id, cc.display_name, cc.email,
+		SELECT cc.id, cc.display_name, NULLIF(cc.email, ''),
 		       (SELECT COUNT(*) FROM chat_messages cm WHERE cm.conversation_id = cc.id AND cm.sender = 'user' AND cm.read_at IS NULL) > 0 AS has_unread,
 		       COALESCE((SELECT SUBSTR(cm2.body, 1, 50) FROM chat_messages cm2 WHERE cm2.conversation_id = cc.id ORDER BY cm2.created_at DESC LIMIT 1), '') AS last_preview,
 		       (SELECT COUNT(*) FROM chat_messages cm3 WHERE cm3.conversation_id = cc.id) AS msg_count,

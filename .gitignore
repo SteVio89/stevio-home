@@ -50,8 +50,11 @@ settings.local.json
 # Kamal
 
 .kamal
-datenschutz.md
-impressum.md
+# Legal-page draft files (pasted into Admin → Legal Pages, not loaded by the app)
+impressum*.md
+datenschutz*.md
+widerruf*.md
+agb*.md
 .claude/worktrees/
 
 .direnv/
