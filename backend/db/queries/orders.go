@@ -171,7 +171,7 @@ func FulfillStubOrder(ctx context.Context, tx *sql.Tx, paymentSession, email, ap
 	row := tx.QueryRowContext(ctx, `
 		UPDATE orders SET email = $1, app_id = $2, price_paid_cents = $3,
 			discount_code_id = $4, auto_discount_id = $5,
-			original_price_cents = $6, discount_label = $7, discount_type = $8, discount_value = $9,
+			original_price_cents = COALESCE($6, 0), discount_label = COALESCE($7, ''), discount_type = COALESCE($8, ''), discount_value = COALESCE($9, 0),
 			consent_given_at = $10
 		WHERE payment_session = $11 AND refunded = TRUE
 		RETURNING id, payment_session, email, app_id, price_paid_cents,
@@ -207,7 +207,7 @@ func InsertOrder(ctx context.Context, tx *sql.Tx, paymentSession, email, appID s
 	row := tx.QueryRowContext(ctx, `
 		INSERT INTO orders (id, payment_session, email, app_id, price_paid_cents, refunded, discount_code_id, auto_discount_id,
 		                    original_price_cents, discount_label, discount_type, discount_value, consent_given_at)
-		VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7, $8, $9, $10, $11, $12)
+		VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7, COALESCE($8, 0), COALESCE($9, ''), COALESCE($10, ''), COALESCE($11, 0), $12)
 		RETURNING id, payment_session, email, app_id, price_paid_cents, refunded, discount_code_id, auto_discount_id,
 		          original_price_cents, discount_label, discount_type, discount_value, consent_given_at, created_at`,
 		id, paymentSession, email, appID, pricePaidCents, discountCodeID, autoDiscountID,

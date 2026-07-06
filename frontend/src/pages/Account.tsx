@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLicenses, getOrders, exportUserData, deleteUserData, type License, type UserOrder } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -155,6 +156,14 @@ export default function Account() {
             {exporting ? t('account.exporting') : t('account.export_button')}
           </button>
         </div>
+      </div>
+
+      <div className="account-section-card">
+        <h2>{t('chat.nav')}</h2>
+        <p>{t('chat.start_desc')}</p>
+        <Link className="btn btn-primary" to={`/${locale}/chat`}>
+          {t('chat.start')}
+        </Link>
       </div>
 
       <div className="danger-zone-card">

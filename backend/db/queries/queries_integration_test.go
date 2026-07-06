@@ -269,7 +269,7 @@ func TestActivationSlotEnforcement(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		machineHash := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 		machineHash = machineHash[:63] + string(rune('0'+i))
 

@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,9 +33,7 @@ func (c *Catalog) Load(lang string, messages map[string]string) {
 	if c.messages[tag] == nil {
 		c.messages[tag] = make(map[string]string)
 	}
-	for k, v := range messages {
-		c.messages[tag][k] = v
-	}
+	maps.Copy(c.messages[tag], messages)
 }
 
 // Set registers a single translation.
@@ -132,7 +131,7 @@ func parseAcceptLanguage(header string) []string {
 	}
 
 	var entries []entry
-	for _, part := range strings.Split(header, ",") {
+	for part := range strings.SplitSeq(header, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue

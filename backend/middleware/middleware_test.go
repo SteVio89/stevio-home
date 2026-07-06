@@ -50,7 +50,7 @@ func TestRateLimiterAllow(t *testing.T) {
 	rl := NewRateLimiter(5, false) // 5 req/min
 
 	// First 5 requests should be allowed
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if !rl.Allow("127.0.0.1") {
 			t.Fatalf("request %d should be allowed", i+1)
 		}
