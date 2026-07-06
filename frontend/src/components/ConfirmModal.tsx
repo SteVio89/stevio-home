@@ -19,73 +19,55 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Focus the cancel button on mount (safe default — avoids accidental confirm)
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    // showModal() gives us focus trapping, Escape-to-close and ::backdrop for free.
+    dialog.showModal();
     cancelRef.current?.focus();
+    return () => dialog.close();
+  }, []);
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        onCancel();
-        return;
-      }
+  // Native Escape fires `cancel`; prevent the default close so React owns unmounting.
+  function handleCancel(e: React.SyntheticEvent<HTMLDialogElement>) {
+    e.preventDefault();
+    onCancel();
+  }
 
-      // Focus trap: cycle Tab within dialog
-      if (e.key === 'Tab') {
-        const dialog = dialogRef.current;
-        if (!dialog) return;
-        const focusable = dialog.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
+  // A click whose target is the dialog element itself is a click on the backdrop.
+  function handleClick(e: React.MouseEvent<HTMLDialogElement>) {
+    if (e.target === dialogRef.current) onCancel();
+  }
 
   return (
-    <div className="confirm-modal-backdrop" onClick={onCancel}>
-      <div
-        ref={dialogRef}
-        className="confirm-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
+    <dialog
+      ref={dialogRef}
+      className="confirm-modal"
+      aria-labelledby="confirm-modal-title"
+      onCancel={handleCancel}
+      onClick={handleClick}
+    >
+      <h3
+        id="confirm-modal-title"
+        className={danger ? 'confirm-modal-title-danger' : ''}
       >
-        <h3
-          id="confirm-modal-title"
-          className={danger ? 'confirm-modal-title-danger' : ''}
+        {title}
+      </h3>
+      <p className="confirm-modal-message">{message}</p>
+      <div className="confirm-modal-actions">
+        <button ref={cancelRef} className="btn btn-secondary" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button
+          className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+          onClick={onConfirm}
         >
-          {title}
-        </h3>
-        <p className="confirm-modal-message">{message}</p>
-        <div className="confirm-modal-actions">
-          <button ref={cancelRef} className="btn btn-secondary" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button
-            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -26,7 +26,6 @@ type MaintenanceChecker struct {
 	db               *sql.DB
 	adminEmailHashes []string
 	secret           []byte
-	cookieName       string
 	settings         *settings.Store
 
 	mu       sync.Mutex
@@ -36,14 +35,10 @@ type MaintenanceChecker struct {
 
 const maintenanceCacheTTL = 5 * time.Second
 
-// NewMaintenanceChecker creates a MaintenanceChecker with default cookie name and settings table.
+// NewMaintenanceChecker creates a MaintenanceChecker backed by the stevio-home
+// site_settings table, keyed by the default session cookie.
 func NewMaintenanceChecker(db *sql.DB, adminEmailHashes []string, secret []byte) (*MaintenanceChecker, error) {
-	return NewMaintenanceCheckerWithOpts(db, adminEmailHashes, secret, DefaultCookieName, "site_settings")
-}
-
-// NewMaintenanceCheckerWithOpts creates a MaintenanceChecker with custom cookie name and settings table.
-func NewMaintenanceCheckerWithOpts(db *sql.DB, adminEmailHashes []string, secret []byte, cookieName, settingsTable string) (*MaintenanceChecker, error) {
-	s, err := settings.NewStore(db, settingsTable)
+	s, err := settings.NewStore(db, "site_settings")
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +46,6 @@ func NewMaintenanceCheckerWithOpts(db *sql.DB, adminEmailHashes []string, secret
 		db:               db,
 		adminEmailHashes: adminEmailHashes,
 		secret:           secret,
-		cookieName:       cookieName,
 		settings:         s,
 	}, nil
 }
@@ -82,7 +76,7 @@ func (mc *MaintenanceChecker) isEnabled(ctx context.Context) bool {
 
 // isRequestFromAdmin returns true if the request carries a valid admin session cookie.
 func (mc *MaintenanceChecker) isRequestFromAdmin(r *http.Request) bool {
-	cookie, err := r.Cookie(mc.cookieName)
+	cookie, err := r.Cookie(DefaultCookieName)
 	if err != nil {
 		return false
 	}

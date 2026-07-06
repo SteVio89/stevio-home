@@ -196,7 +196,7 @@ type ChatListResult struct {
 }
 
 func ListConversations(ctx context.Context, db *sql.DB, filter ChatListFilter) (*ChatListResult, error) {
-	filter.Page, filter.PerPage = clampPagination(filter.Page, filter.PerPage)
+	filter.Page, filter.PerPage = dbutil.ClampPagination(filter.Page, filter.PerPage)
 
 	var total int
 	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM chat_conversations`).Scan(&total); err != nil {

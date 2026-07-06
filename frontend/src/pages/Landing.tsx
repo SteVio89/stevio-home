@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getHero, getProjects, listPublicSocialLinks } from '../api/client';
@@ -7,7 +7,6 @@ import { useDocumentHead } from '../hooks/useDocumentHead';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { useLocale } from '../context/LocaleContext';
 import { formatPrice } from '../utils/format';
-import { useScrollReveal } from '../hooks/useScrollReveal';
 import Skeleton from '../components/Skeleton';
 
 // Platform → Font Awesome icon class mapping
@@ -97,8 +96,6 @@ export default function Landing() {
   const { currency_symbol: currencySymbol, site_name, base_url } = useSiteConfig();
   const { locale } = useLocale();
   const { t } = useTranslation();
-  const containerRef = useScrollReveal();
-  const heroRef = useRef<HTMLElement>(null);
 
   useDocumentHead({
     title: hero?.headline ?? site_name,
@@ -119,22 +116,12 @@ export default function Landing() {
       .finally(() => setLoading(false));
   }, [locale]);
 
-  // Hero is above the fold — animate in with a brief delay instead of IntersectionObserver
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (heroRef.current) {
-        heroRef.current.classList.add('reveal-visible');
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <div className="page landing-page" ref={containerRef}>
+    <div className="page landing-page">
       {error && <p className="landing-error">{t('landing.load_error')}</p>}
 
       {/* Hero Section — always dark band */}
-      <section className="landing-hero reveal-hidden" ref={heroRef}>
+      <section className="landing-hero reveal-hidden">
         <div className="landing-hero-content">
           {hero && (
             <>

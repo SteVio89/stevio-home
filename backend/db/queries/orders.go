@@ -41,7 +41,7 @@ type OrderListResult struct {
 
 // ListAllOrders returns a paginated, optionally filtered list of all orders for admin use.
 func ListAllOrders(ctx context.Context, db *sql.DB, defaultLocale string, filter OrderListFilter) (*OrderListResult, error) {
-	filter.Page, filter.PerPage = clampPagination(filter.Page, filter.PerPage)
+	filter.Page, filter.PerPage = dbutil.ClampPagination(filter.Page, filter.PerPage)
 
 	var where []string
 	var args []any
@@ -117,13 +117,6 @@ func ListAllOrders(ctx context.Context, db *sql.DB, defaultLocale string, filter
 	}
 
 	return &OrderListResult{Orders: orders, Total: total}, nil
-}
-
-func OrderExistsByPaymentSession(ctx context.Context, db *sql.DB, sessionID string) (bool, error) {
-	var exists bool
-	err := db.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM orders WHERE payment_session = $1)`, sessionID).Scan(&exists)
-	return exists, err
 }
 
 // OrderDiscountSnapshot captures the discount state at the moment of purchase.

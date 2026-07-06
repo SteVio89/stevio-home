@@ -197,9 +197,9 @@ func TestChain(t *testing.T) {
 		})
 	}
 
-	handler := ChainFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		order = append(order, "handler")
-	}, mwA, mwB)
+	}), mwA, mwB)
 
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
 
@@ -405,7 +405,7 @@ func TestMaintenanceMiddleware(t *testing.T) {
 	db := testutil.SetupTestDB(t, "auth", auth.MigrationFiles)
 
 	// Create the settings table.
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT)`)
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS site_settings (key TEXT PRIMARY KEY, value TEXT)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,9 +419,7 @@ func TestMaintenanceMiddleware(t *testing.T) {
 	}
 	adminCookie := crypto.SignSession(adminSessionID, secret)
 
-	// Use *WithOpts because the test uses the `app_settings` table, while
-	// NewMaintenanceChecker defaults to `site_settings` (stevio-home convention).
-	mc, err := NewMaintenanceCheckerWithOpts(db, []string{adminEmailHash}, secret, DefaultCookieName, "app_settings")
+	mc, err := NewMaintenanceChecker(db, []string{adminEmailHash}, secret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -439,7 +437,7 @@ func TestMaintenanceMiddleware(t *testing.T) {
 	})
 
 	// Enable maintenance mode.
-	_, err = db.Exec(`INSERT INTO app_settings (key, value) VALUES ('maintenance_mode', '1')`)
+	_, err = db.Exec(`INSERT INTO site_settings (key, value) VALUES ('maintenance_mode', '1')`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -484,7 +482,7 @@ func TestMaintenanceMiddleware(t *testing.T) {
 	})
 
 	// Disable maintenance mode.
-	_, err = db.Exec(`UPDATE app_settings SET value = '0' WHERE key = 'maintenance_mode'`)
+	_, err = db.Exec(`UPDATE site_settings SET value = '0' WHERE key = 'maintenance_mode'`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,12 +503,12 @@ func TestMaintenanceChecker_CacheTTL(t *testing.T) {
 	secret := []byte("test-secret-32-bytes-long-enough")
 	db := testutil.SetupTestDB(t, "auth", auth.MigrationFiles)
 
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT)`)
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS site_settings (key TEXT PRIMARY KEY, value TEXT)`)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	mc, err := NewMaintenanceCheckerWithOpts(db, nil, secret, DefaultCookieName, "app_settings")
+	mc, err := NewMaintenanceChecker(db, nil, secret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +521,7 @@ func TestMaintenanceChecker_CacheTTL(t *testing.T) {
 	}
 
 	// Enable in DB but cache should still return false.
-	_, err = db.Exec(`INSERT INTO app_settings (key, value) VALUES ('maintenance_mode', '1')`)
+	_, err = db.Exec(`INSERT INTO site_settings (key, value) VALUES ('maintenance_mode', '1')`)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -214,15 +214,7 @@ func TestOrderAndLicense(t *testing.T) {
 
 	_, appID := seedProjectAndApp(t, db, "order-app", "com.test.order")
 
-	exists, err := queries.OrderExistsByPaymentSession(ctx, db, "session-1")
-	if err != nil {
-		t.Fatalf("OrderExistsByPaymentSession: %v", err)
-	}
-	if exists {
-		t.Error("order should not exist")
-	}
-
-	err = queries.WithTx(ctx, db, func(tx *sql.Tx) error {
+	err := queries.WithTx(ctx, db, func(tx *sql.Tx) error {
 		order, err := queries.InsertOrder(ctx, tx, "session-1", "emailhash", appID, 0, nil, nil, queries.OrderDiscountSnapshot{}, "")
 		if err != nil {
 			return err
@@ -232,14 +224,6 @@ func TestOrderAndLicense(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("WithTx: %v", err)
-	}
-
-	exists, err = queries.OrderExistsByPaymentSession(ctx, db, "session-1")
-	if err != nil {
-		t.Fatalf("OrderExistsByPaymentSession: %v", err)
-	}
-	if !exists {
-		t.Error("order should exist")
 	}
 
 	license, err := queries.GetLicenseByKey(ctx, db, "license-key-123", "de")

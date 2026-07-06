@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 // @ts-expect-error vitest-axe/matchers uses export type * but the runtime value exists
@@ -16,67 +16,51 @@ const defaultProps = {
   onCancel: vi.fn(),
 };
 
+function getDialog(container: HTMLElement): HTMLDialogElement {
+  const dialog = container.querySelector('dialog.confirm-modal');
+  if (!dialog) throw new Error('dialog not found');
+  return dialog as HTMLDialogElement;
+}
+
 describe('ConfirmModal', () => {
-  it('has correct ARIA structure — role=dialog on inner div, not backdrop', () => {
+  it('renders a native <dialog> labelled by its title', () => {
     const { container } = render(<ConfirmModal {...defaultProps} />);
-
-    // Inner dialog div must have role="dialog"
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).not.toBeNull();
-    expect(dialog).toHaveClass('confirm-modal');
-
-    // Backdrop must NOT have role="dialog"
-    const backdrop = container.querySelector('.confirm-modal-backdrop');
-    expect(backdrop).not.toBeNull();
-    expect(backdrop).not.toHaveAttribute('role', 'dialog');
-    // Backdrop must NOT have aria-hidden (it wraps the dialog — aria-hidden would hide dialog from AT)
-    expect(backdrop).not.toHaveAttribute('aria-hidden');
-  });
-
-  it('has aria-modal and aria-labelledby on dialog', () => {
-    const { container } = render(<ConfirmModal {...defaultProps} />);
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const dialog = getDialog(container);
     expect(dialog).toHaveAttribute('aria-labelledby', 'confirm-modal-title');
   });
 
   it('has id on h3 matching aria-labelledby', () => {
     render(<ConfirmModal {...defaultProps} />);
     const heading = document.getElementById('confirm-modal-title');
-    expect(heading).not.toBeNull();
     expect(heading?.tagName).toBe('H3');
     expect(heading).toHaveTextContent('Test bestätigen');
   });
 
   it('dialog is discoverable via role query', () => {
     render(<ConfirmModal {...defaultProps} />);
-    // screen.getByRole('dialog') must work — proves role is on correct element
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('calls onCancel when Escape pressed', async () => {
+  it('calls onCancel on the native cancel event (Escape)', () => {
     const onCancel = vi.fn();
-    const user = userEvent.setup();
-    render(<ConfirmModal {...defaultProps} onCancel={onCancel} />);
-    await user.keyboard('{Escape}');
+    const { container } = render(<ConfirmModal {...defaultProps} onCancel={onCancel} />);
+    fireEvent(getDialog(container), new Event('cancel', { cancelable: true }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onCancel when backdrop clicked', async () => {
+  it('calls onCancel when the backdrop (dialog element itself) is clicked', async () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     const { container } = render(<ConfirmModal {...defaultProps} onCancel={onCancel} />);
-    const backdrop = container.querySelector('.confirm-modal-backdrop') as HTMLElement;
-    await user.click(backdrop);
+    await user.click(getDialog(container));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call onCancel when inner modal clicked', async () => {
+  it('does not call onCancel when dialog content is clicked', async () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(<ConfirmModal {...defaultProps} onCancel={onCancel} />);
-    const dialog = screen.getByRole('dialog');
-    await user.click(dialog);
+    await user.click(screen.getByText('Bist du sicher?'));
     expect(onCancel).not.toHaveBeenCalled();
   });
 

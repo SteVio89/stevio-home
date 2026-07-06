@@ -102,24 +102,47 @@ func (c *Catalog) Resolve(acceptLang string) string {
 		return c.fallback
 	}
 
+	tags := parseAcceptLanguage(acceptLang)
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, tag := range tags {
+		if _, ok := c.messages[tag]; ok {
+			return tag
+		}
+		// Try primary subtag.
+		if idx := strings.IndexByte(tag, '-'); idx > 0 {
+			primary := tag[:idx]
+			if _, ok := c.messages[primary]; ok {
+				return primary
+			}
+		}
+	}
+
+	return c.fallback
+}
+
+// parseAcceptLanguage parses an Accept-Language header value and returns the
+// requested language tags, lowercased and ordered by descending q-value (stable
+// within equal q). Tags with a malformed or absent q-value default to q=1.0.
+func parseAcceptLanguage(header string) []string {
 	type entry struct {
 		tag string
 		q   float64
 	}
 
 	var entries []entry
-	for _, part := range strings.Split(acceptLang, ",") {
+	for _, part := range strings.Split(header, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
 		tag := part
 		q := 1.0
-		if idx := strings.Index(part, ";"); idx >= 0 {
-			tag = strings.TrimSpace(part[:idx])
-			qstr := strings.TrimSpace(part[idx+1:])
-			if strings.HasPrefix(qstr, "q=") {
-				if v, err := strconv.ParseFloat(qstr[2:], 64); err == nil {
+		if before, after, found := strings.Cut(part, ";"); found {
+			tag = strings.TrimSpace(before)
+			if qstr, ok := strings.CutPrefix(strings.TrimSpace(after), "q="); ok {
+				if v, err := strconv.ParseFloat(qstr, 64); err == nil {
 					q = v
 				}
 			}
@@ -134,22 +157,11 @@ func (c *Catalog) Resolve(acceptLang string) string {
 		}
 	}
 
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	for _, e := range entries {
-		if _, ok := c.messages[e.tag]; ok {
-			return e.tag
-		}
-		// Try primary subtag.
-		if idx := strings.IndexByte(e.tag, '-'); idx > 0 {
-			primary := e.tag[:idx]
-			if _, ok := c.messages[primary]; ok {
-				return primary
-			}
-		}
+	tags := make([]string, len(entries))
+	for i, e := range entries {
+		tags[i] = e.tag
 	}
-
-	return c.fallback
+	return tags
 }
 
 func applyArgs(s string, args []any) string {

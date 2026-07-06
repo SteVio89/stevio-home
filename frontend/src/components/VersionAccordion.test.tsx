@@ -54,13 +54,15 @@ describe('VersionAccordion', () => {
     expect(screen.getByText(/1\.1\.0/)).toBeInTheDocument();
   });
 
-  it('first item defaults to open (aria-expanded="true")', async () => {
+  it('first item defaults to open, others closed', async () => {
     vi.stubGlobal('fetch', mockFetchOk(mockVersions));
     render(<VersionAccordion slug="my-project" />);
     await waitFor(() => {
-      const buttons = screen.getAllByRole('button');
-      expect(buttons[0]).toHaveAttribute('aria-expanded', 'true');
+      expect(document.querySelectorAll('details.version-accordion-item').length).toBe(2);
     });
+    const items = document.querySelectorAll('details.version-accordion-item');
+    expect(items[0]).toHaveAttribute('open');
+    expect(items[1]).not.toHaveAttribute('open');
   });
 
   it('shows error message when fetch fails', async () => {

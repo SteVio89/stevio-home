@@ -12,8 +12,3 @@ func Chain(h http.Handler, mws ...Middleware) http.Handler {
 	}
 	return h
 }
-
-// ChainFunc is a convenience for wrapping http.HandlerFunc.
-func ChainFunc(h http.HandlerFunc, mws ...Middleware) http.Handler {
-	return Chain(h, mws...)
-}

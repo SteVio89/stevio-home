@@ -4,14 +4,12 @@ import { useSiteConfig } from './SiteConfigContext';
 import { setClientLocale } from '../api/client';
 import i18next from 'i18next';
 import { DEFAULT_LOCALE, loadDBOverrides } from '../i18n/index';
-import type { LocaleInfo } from '../i18n/useT';
 
 interface LocaleContextValue {
   locale: string;
-  availableLocales: LocaleInfo[];
 }
 
-const LocaleContext = createContext<LocaleContextValue>({ locale: DEFAULT_LOCALE, availableLocales: [] });
+const LocaleContext = createContext<LocaleContextValue>({ locale: DEFAULT_LOCALE });
 
 /**
  * LocaleProvider is used as a route layout element for /:locale/* routes.
@@ -38,7 +36,7 @@ export function LocaleProvider() {
   }, [locale]);
 
   return (
-    <LocaleContext.Provider value={{ locale, availableLocales: locales }}>
+    <LocaleContext.Provider value={{ locale }}>
       <Outlet />
     </LocaleContext.Provider>
   );

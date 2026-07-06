@@ -40,7 +40,7 @@ type LicenseListResult struct {
 
 // ListAllLicenses returns a paginated, optionally filtered list of all licenses for admin use.
 func ListAllLicenses(ctx context.Context, db *sql.DB, defaultLocale string, filter LicenseListFilter) (*LicenseListResult, error) {
-	filter.Page, filter.PerPage = clampPagination(filter.Page, filter.PerPage)
+	filter.Page, filter.PerPage = dbutil.ClampPagination(filter.Page, filter.PerPage)
 
 	var where []string
 	var args []any
@@ -316,11 +316,6 @@ func GetLicensesByEmail(ctx context.Context, db *sql.DB, email, defaultLocale st
 		out = append(out, l)
 	}
 	return out, rows.Err()
-}
-
-func RevokeLicense(ctx context.Context, db *sql.DB, id string) error {
-	_, err := db.ExecContext(ctx, `UPDATE licenses SET revoked = TRUE WHERE id = $1`, id)
-	return err
 }
 
 func UnrevokeLicense(ctx context.Context, db *sql.DB, id string) error {

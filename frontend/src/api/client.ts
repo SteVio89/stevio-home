@@ -11,8 +11,8 @@ export function setMaintenanceListener(fn: MaintenanceListener | null) {
   onMaintenanceDetected = fn;
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+async function apiFetch<T>(url: string, options: RequestInit | undefined, checkMaintenance: boolean): Promise<T> {
+  const res = await fetch(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLocale },
     ...options,
@@ -20,7 +20,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: 'unknown', message: res.statusText }));
-    if (res.status === 503 && body.error === 'maintenance') {
+    if (checkMaintenance && res.status === 503 && body.error === 'maintenance') {
       onMaintenanceDetected?.();
     }
     throw new APIError(body.error, body.message, res.status);
@@ -31,21 +31,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// request targets the /api routes and surfaces 503 maintenance responses.
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  return apiFetch<T>(`${API_BASE}${path}`, options, true);
+}
+
+// authRequest targets the framework /auth routes (not under /api).
 async function authRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`/auth${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'Accept-Language': currentLocale },
-    ...options,
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: 'unknown', message: res.statusText }));
-    throw new APIError(body.error, body.message, res.status);
-  }
-
-  const ct = res.headers.get('Content-Type') ?? '';
-  if (!ct.includes('application/json')) return undefined as T;
-  return res.json();
+  return apiFetch<T>(`/auth${path}`, options, false);
 }
 
 export class APIError extends Error {
@@ -256,14 +249,6 @@ export interface AdminAppListItem {
 
 export async function adminListApps(): Promise<AdminAppListItem[]> {
   return request<AdminAppListItem[]>('/admin/apps');
-}
-
-export async function adminDeleteApp(id: string): Promise<void> {
-  await request<void>(`/admin/apps/${id}`, { method: 'DELETE' });
-}
-
-export async function adminRestoreApp(id: string): Promise<void> {
-  await request<void>(`/admin/apps/${id}/restore`, { method: 'POST' });
 }
 
 // AdminApp is the full commerce row returned by attach/create endpoints.
@@ -793,10 +778,6 @@ export function adminUpdateLocale(code: string, data: { enabled?: boolean; is_de
 }
 
 // ── Admin — page translations ──────────────────────────────────────────────
-
-export function adminListPageTranslations(): Promise<Record<string, Record<string, Record<string, string>>>> {
-  return request<Record<string, Record<string, Record<string, string>>>>('/admin/page-translations');
-}
 
 export function adminGetPageTranslation(pageKey: string, locale: string): Promise<Record<string, string>> {
   return request<Record<string, string>>(`/admin/page-translations/${pageKey}/${locale}`);

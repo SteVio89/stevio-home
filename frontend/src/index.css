@@ -210,21 +210,39 @@
   outline-offset: 2px;
 }
 
-/* Scroll-reveal animation classes */
+/* Scroll-reveal animation — CSS scroll-driven where supported (Chromium),
+   visible by default elsewhere (Firefox/Safari have no animation-timeline yet). */
 .reveal-hidden {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-.reveal-visible {
   opacity: 1;
-  transform: translateY(0);
+}
+@supports (animation-timeline: view()) {
+  .reveal-hidden {
+    animation: reveal-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+}
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Hero is above the fold — a load-time entrance (document timeline), not scroll-driven. */
+.landing-hero.reveal-hidden {
+  animation: reveal-in 0.6s ease 0.2s both;
+  animation-timeline: auto;
 }
 @media (prefers-reduced-motion: reduce) {
-  .reveal-hidden {
+  .reveal-hidden,
+  .landing-hero.reveal-hidden {
     opacity: 1;
     transform: none;
-    transition: none;
+    animation: none;
   }
 }
 
@@ -2078,25 +2096,20 @@ code {
 }
 
 /* ─── Confirm Modal ─────────────────────────────────────────────────────────── */
-.confirm-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 15, 31, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  animation: fadeIn 0.15s ease-out;
-}
-
 .confirm-modal {
   background: var(--color-surface);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 1.75rem;
   min-width: 380px;
   max-width: 480px;
   box-shadow: var(--shadow-md);
   animation: modalSlideIn 0.2s var(--ease-out);
+}
+
+.confirm-modal::backdrop {
+  background: rgba(0, 15, 31, 0.6);
+  animation: fadeIn 0.15s ease-out;
 }
 
 .confirm-modal h3 {
@@ -2129,19 +2142,9 @@ code {
 }
 
 /* Consent modal (withdrawal right waiver) */
-.consent-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 15, 31, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  animation: fadeIn 0.15s ease-out;
-}
-
 .consent-modal {
   background: var(--color-surface);
+  border: none;
   border-radius: var(--radius-lg);
   padding: 2rem;
   max-width: 500px;
@@ -2150,8 +2153,9 @@ code {
   animation: modalSlideIn 0.2s var(--ease-out);
 }
 
-.consent-modal:focus {
-  outline: none;
+.consent-modal::backdrop {
+  background: rgba(0, 15, 31, 0.6);
+  animation: fadeIn 0.15s ease-out;
 }
 
 .consent-modal h2 {
@@ -3423,13 +3427,15 @@ code {
   align-items: center;
   width: 100%;
   padding: 0.75rem 0;
-  background: none;
-  border: none;
   cursor: pointer;
   font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
+  list-style: none;
+}
+.version-accordion-header::-webkit-details-marker {
+  display: none;
 }
 .version-accordion-header:focus-visible {
   outline: 2px solid var(--color-teal);
@@ -3439,17 +3445,9 @@ code {
   transition: transform 0.25s var(--ease-out, ease-out);
   color: var(--color-text-muted);
 }
-.version-accordion-chevron.open {
+.version-accordion-item[open] .version-accordion-chevron {
   transform: rotate(180deg);
   color: var(--color-teal);
-}
-.version-accordion-content {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.25s var(--ease-out, ease-out);
-}
-.version-accordion-content.open {
-  max-height: 500px;
 }
 .version-accordion-content-inner {
   padding: 0 0 1rem;

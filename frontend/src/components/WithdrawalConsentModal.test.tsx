@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 // @ts-expect-error vitest-axe/matchers uses export type * but the runtime value exists
@@ -14,25 +14,16 @@ const defaultProps = {
   onCancel: vi.fn(),
 };
 
+function getDialog(container: HTMLElement): HTMLDialogElement {
+  const dialog = container.querySelector('dialog.consent-modal');
+  if (!dialog) throw new Error('dialog not found');
+  return dialog as HTMLDialogElement;
+}
+
 describe('WithdrawalConsentModal', () => {
-  it('has correct ARIA structure — role=dialog on inner div, not backdrop', () => {
+  it('renders a native <dialog> labelled and described by its content', () => {
     const { container } = render(<WithdrawalConsentModal {...defaultProps} />);
-
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).not.toBeNull();
-    expect(dialog).toHaveClass('consent-modal');
-
-    const backdrop = container.querySelector('.consent-modal-backdrop');
-    expect(backdrop).not.toBeNull();
-    expect(backdrop).not.toHaveAttribute('role');
-    // Backdrop must NOT have aria-hidden (it wraps the dialog — aria-hidden would hide dialog from AT)
-    expect(backdrop).not.toHaveAttribute('aria-hidden');
-  });
-
-  it('has aria-modal, aria-labelledby, and aria-describedby on dialog', () => {
-    const { container } = render(<WithdrawalConsentModal {...defaultProps} />);
-    const dialog = container.querySelector('[role="dialog"]');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    const dialog = getDialog(container);
     expect(dialog).toHaveAttribute('aria-labelledby', 'consent-modal-title');
     expect(dialog).toHaveAttribute('aria-describedby', 'consent-modal-desc');
   });
@@ -53,23 +44,20 @@ describe('WithdrawalConsentModal', () => {
     render(<WithdrawalConsentModal {...defaultProps} />);
     const confirmBtn = screen.getByText('Weiter zur Zahlung');
     expect(confirmBtn).toBeDisabled();
-    const checkbox = screen.getByRole('checkbox');
-    await user.click(checkbox);
+    await user.click(screen.getByRole('checkbox'));
     expect(confirmBtn).not.toBeDisabled();
   });
 
   it('checkbox has associated label (wrapping label element)', () => {
     render(<WithdrawalConsentModal {...defaultProps} />);
     const checkbox = screen.getByRole('checkbox');
-    const label = checkbox.closest('label');
-    expect(label).not.toBeNull();
+    expect(checkbox.closest('label')).not.toBeNull();
   });
 
-  it('calls onCancel when Escape pressed', async () => {
+  it('calls onCancel on the native cancel event (Escape)', () => {
     const onCancel = vi.fn();
-    const user = userEvent.setup();
-    render(<WithdrawalConsentModal {...defaultProps} onCancel={onCancel} />);
-    await user.keyboard('{Escape}');
+    const { container } = render(<WithdrawalConsentModal {...defaultProps} onCancel={onCancel} />);
+    fireEvent(getDialog(container), new Event('cancel', { cancelable: true }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
@@ -82,18 +70,18 @@ describe('WithdrawalConsentModal', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('has no axe-core accessibility violations', async () => {
-    const { container } = render(<WithdrawalConsentModal {...defaultProps} />);
-    const results = await axe(container);
-    // @ts-expect-error vitest-axe matcher type
-    expect(results).toHaveNoViolations();
-  });
-
   it('cancel button calls onCancel', async () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(<WithdrawalConsentModal {...defaultProps} onCancel={onCancel} />);
     await user.click(screen.getByText('Abbrechen'));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('has no axe-core accessibility violations', async () => {
+    const { container } = render(<WithdrawalConsentModal {...defaultProps} />);
+    const results = await axe(container);
+    // @ts-expect-error vitest-axe matcher type
+    expect(results).toHaveNoViolations();
   });
 });

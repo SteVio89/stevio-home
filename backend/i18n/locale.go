@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"strconv"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -99,12 +99,7 @@ func (c *LocaleCache) IsSupported(ctx context.Context, code string) bool {
 	code = strings.ToLower(code)
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	for _, s := range c.codes {
-		if s == code {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.codes, code)
 }
 
 // FromRequest resolves the best locale from the request's Accept-Language header.
@@ -177,52 +172,20 @@ func resolveAcceptLang(header string, supported []string, defaultCode string) st
 		return defaultCode
 	}
 
-	type entry struct {
-		tag string
-		q   float64
-	}
-
-	var entries []entry
-	for _, part := range strings.Split(header, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		tag := part
-		q := 1.0
-		if idx := strings.Index(part, ";"); idx >= 0 {
-			tag = strings.TrimSpace(part[:idx])
-			qstr := strings.TrimSpace(part[idx+1:])
-			if strings.HasPrefix(qstr, "q=") {
-				if v, err := strconv.ParseFloat(qstr[2:], 64); err == nil {
-					q = v
-				}
-			}
-		}
-		entries = append(entries, entry{tag: strings.ToLower(tag), q: q})
-	}
-
-	// Sort by quality descending (stable within original order).
-	for i := 1; i < len(entries); i++ {
-		for j := i; j > 0 && entries[j].q > entries[j-1].q; j-- {
-			entries[j], entries[j-1] = entries[j-1], entries[j]
-		}
-	}
-
 	// Build a set for O(1) lookup.
 	set := make(map[string]bool, len(supported))
 	for _, s := range supported {
 		set[s] = true
 	}
 
-	for _, e := range entries {
-		if set[e.tag] {
-			return e.tag
+	for _, tag := range parseAcceptLanguage(header) {
+		if set[tag] {
+			return tag
 		}
 		// Try primary subtag (e.g. "pt" from "pt-br").
-		if idx := strings.IndexByte(e.tag, '-'); idx > 0 {
-			if set[e.tag[:idx]] {
-				return e.tag[:idx]
+		if idx := strings.IndexByte(tag, '-'); idx > 0 {
+			if set[tag[:idx]] {
+				return tag[:idx]
 			}
 		}
 	}
