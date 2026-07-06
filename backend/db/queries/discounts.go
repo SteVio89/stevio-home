@@ -107,8 +107,10 @@ type InsertDiscountCodeParams struct {
 func InsertDiscountCode(ctx context.Context, db *sql.DB, p InsertDiscountCodeParams) (*models.DiscountCode, error) {
 	id := dbutil.NewID()
 	row := db.QueryRowContext(ctx,
+		// max_uses uses COALESCE so a blank field (nil *int → NULL) lands as 0
+		// (= unlimited); an explicit NULL would violate the NOT NULL column.
 		`INSERT INTO discount_codes (id, code, label, discount_type, discount_value, app_id, max_uses, expires_at, stackable)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		 VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 0), $8, $9)
 		 RETURNING `+discountCols,
 		id, p.Code, p.Label, p.DiscountType, p.DiscountValue, p.AppID, p.MaxUses, p.ExpiresAt, p.Stackable)
 	return scanDiscountCode(row.Scan)
@@ -128,7 +130,7 @@ type UpdateDiscountCodeParams struct {
 func UpdateDiscountCode(ctx context.Context, db *sql.DB, id string, p UpdateDiscountCodeParams) (*models.DiscountCode, error) {
 	row := db.QueryRowContext(ctx,
 		`UPDATE discount_codes
-		 SET label=$1, discount_type=$2, discount_value=$3, app_id=$4, max_uses=$5, expires_at=$6, active=$7, stackable=$8
+		 SET label=$1, discount_type=$2, discount_value=$3, app_id=$4, max_uses=COALESCE($5, 0), expires_at=$6, active=$7, stackable=$8
 		 WHERE id=$9 AND deleted_at IS NULL
 		 RETURNING `+discountCols,
 		p.Label, p.DiscountType, p.DiscountValue, p.AppID, p.MaxUses, p.ExpiresAt, p.Active, p.Stackable, id)
@@ -153,6 +155,23 @@ func SoftDeleteDiscountCode(ctx context.Context, db *sql.DB, id string) error {
 			return ErrDiscountNotFound
 		}
 		return nil // already soft-deleted, idempotent
+	}
+	return nil
+}
+
+// HardDeleteDiscountCode permanently removes an already-archived (soft-deleted)
+// code. The deleted_at IS NOT NULL guard enforces the two-step archive→delete
+// flow. Safe: orders.discount_code_id is not FK-constrained and orders keep a
+// snapshot of the discount, so historical orders are unaffected.
+func HardDeleteDiscountCode(ctx context.Context, db *sql.DB, id string) error {
+	res, err := db.ExecContext(ctx,
+		`DELETE FROM discount_codes WHERE id = $1 AND deleted_at IS NOT NULL`, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return ErrDiscountNotFound // not found, or not archived yet
 	}
 	return nil
 }

@@ -7,6 +7,7 @@
   "footer.impressum": "Impressum",
   "footer.privacy": "Datenschutz",
   "footer.refund_policy": "Widerrufsbelehrung",
+  "footer.terms": "AGB",
 
   "project.back": "← Zurück zum Store",
   "project.about": "Über",
@@ -106,6 +107,7 @@
   "legal.impressum_title": "Impressum",
   "legal.privacy_title": "Datenschutz",
   "legal.refund_title": "Widerrufsbelehrung",
+  "legal.terms_title": "Allgemeine Geschäftsbedingungen",
   "legal.loading": "Laden…",
   "legal.error": "Inhalt vorübergehend nicht verfügbar.",
   "legal.back": "Startseite",

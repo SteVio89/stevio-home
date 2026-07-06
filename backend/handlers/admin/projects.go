@@ -2,6 +2,7 @@ package admin
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -222,6 +223,39 @@ func (h *AdminHandler) AdminRestoreProject(c *app.Ctx) error {
 	if err := queries.RestoreProject(c.R.Context(), c.DB().DB, c.Param("id")); err != nil {
 		h.log.Printf("admin: restore project %q: %v", c.Param("id"), err)
 		return apierr.ErrInternal()
+	}
+	return c.NoContent()
+}
+
+// AdminHardDeleteProject permanently removes a project (and its app, images,
+// translations). Refuses with 409 when the project has order history, which must
+// be retained. Image files are unlinked from disk after the DB delete commits.
+func (h *AdminHandler) AdminHardDeleteProject(c *app.Ctx) error {
+	id := c.Param("id")
+	filePaths, err := queries.HardDeleteProject(c.R.Context(), c.DB().DB, id,
+		common.EntityTypeProject, common.EntityTypeProjectImage)
+	if err != nil {
+		if errors.Is(err, queries.ErrProjectHasOrders) {
+			return apierr.ErrConflict()
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return apierr.ErrNotFound()
+		}
+		h.log.Printf("admin: permanently delete project %q: %v", id, err)
+		return apierr.ErrInternal()
+	}
+
+	// Unlink image files (same pattern as AdminDeleteProjectImage). Best-effort:
+	// the DB rows are already gone, so a stray file is harmless.
+	for _, fp := range filePaths {
+		fullPath, err := pathutil.SafePath(h.cfg.AssetsDir, fp)
+		if err != nil {
+			h.log.Printf("admin: safePath hard-delete project image %q: %v", fp, err)
+			continue
+		}
+		if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+			h.log.Printf("admin: remove project image file %q: %v", fullPath, err)
+		}
 	}
 	return c.NoContent()
 }

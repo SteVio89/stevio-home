@@ -6,6 +6,7 @@ import {
   adminUpdateDiscountCode,
   adminDeleteDiscountCode,
   adminRestoreDiscountCode,
+  adminPermanentDeleteDiscountCode,
   adminListAutoDiscounts,
   adminCreateAutoDiscount,
   adminUpdateAutoDiscount,
@@ -72,6 +73,7 @@ export default function AdminDiscountCodes() {
 
   const [activeTab, setActiveTab] = useState<'codes' | 'auto'>('codes');
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; type: 'code' | 'auto'; label: string } | null>(null);
+  const [permanentTarget, setPermanentTarget] = useState<{ id: string; label: string } | null>(null);
   const { currency_symbol } = useSiteConfig();
 
   useEffect(() => {
@@ -169,6 +171,16 @@ export default function AdminDiscountCodes() {
     } catch (err) {
       setError(err instanceof APIError ? err.message : 'Failed to restore code');
     }
+  }
+
+  async function handlePermanentDeleteCode(id: string) {
+    try {
+      await adminPermanentDeleteDiscountCode(id);
+      setCodes((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      setError(err instanceof APIError ? err.message : 'Failed to delete code');
+    }
+    setPermanentTarget(null);
   }
 
   // --- Auto-discount handlers ---
@@ -293,6 +305,17 @@ export default function AdminDiscountCodes() {
           danger
           onConfirm={() => archiveTarget.type === 'code' ? handleArchiveCode(archiveTarget.id) : handleArchiveAuto(archiveTarget.id)}
           onCancel={() => setArchiveTarget(null)}
+        />
+      )}
+
+      {permanentTarget && (
+        <ConfirmModal
+          title="Delete Permanently"
+          message={`Permanently delete "${permanentTarget.label || 'this discount'}"? This cannot be undone.`}
+          confirmLabel="Delete permanently"
+          danger
+          onConfirm={() => handlePermanentDeleteCode(permanentTarget.id)}
+          onCancel={() => setPermanentTarget(null)}
         />
       )}
 
@@ -491,9 +514,14 @@ export default function AdminDiscountCodes() {
                         </button>
                       )}
                       {code.deleted_at ? (
-                        <button className="btn btn-secondary btn-small" onClick={() => handleRestoreCode(code.id)}>
-                          Restore
-                        </button>
+                        <>
+                          <button className="btn btn-secondary btn-small" onClick={() => handleRestoreCode(code.id)}>
+                            Restore
+                          </button>
+                          <button className="btn btn-danger btn-small" onClick={() => setPermanentTarget({ id: code.id, label: code.code })}>
+                            Delete permanently
+                          </button>
+                        </>
                       ) : (
                         <button className="btn btn-danger btn-small" onClick={() => setArchiveTarget({ id: code.id, type: 'code', label: code.code })}>
                           Archive

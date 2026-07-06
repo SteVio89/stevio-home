@@ -34,6 +34,7 @@ func RegisterRoutes(app *appsvc.App, h *Handlers, maintenance middleware.Middlew
 	api.Public().Handle("GET /legal/impressum", h.Store.GetImpressum)
 	api.Public().Handle("GET /legal/privacy", h.Store.GetPrivacyPolicy)
 	api.Public().Handle("GET /legal/refund-policy", h.Store.GetRefundPolicy)
+	api.Public().Handle("GET /legal/terms", h.Store.GetTermsOfUse)
 	api.Public().Handle("GET /checkout/verify", h.Checkout.VerifyCheckout)
 
 	// --- Public (maintenance-blocked) ---
@@ -105,6 +106,7 @@ func RegisterRoutes(app *appsvc.App, h *Handlers, maintenance middleware.Middlew
 	adm.Handle("POST /admin/discount-codes", h.Admin.AdminCreateDiscountCode)
 	adm.Handle("PATCH /admin/discount-codes/{id}", h.Admin.AdminUpdateDiscountCode)
 	adm.Handle("DELETE /admin/discount-codes/{id}", h.Admin.AdminDeleteDiscountCode)
+	adm.Handle("DELETE /admin/discount-codes/{id}/permanent", h.Admin.AdminHardDeleteDiscountCode)
 	adm.Handle("PATCH /admin/discount-codes/{id}/restore", h.Admin.AdminRestoreDiscountCode)
 	adm.Handle("GET /admin/auto-discounts", h.Admin.AdminListAutoDiscounts)
 	adm.Handle("POST /admin/auto-discounts", h.Admin.AdminCreateAutoDiscount)
@@ -148,6 +150,7 @@ func RegisterRoutes(app *appsvc.App, h *Handlers, maintenance middleware.Middlew
 	adm.Handle("POST /admin/projects", h.Admin.AdminCreateProject)
 	adm.Handle("PATCH /admin/projects/{id}", h.Admin.AdminUpdateProject)
 	adm.Handle("DELETE /admin/projects/{id}", h.Admin.AdminDeleteProject)
+	adm.Handle("DELETE /admin/projects/{id}/permanent", h.Admin.AdminHardDeleteProject)
 	adm.Handle("POST /admin/projects/{id}/restore", h.Admin.AdminRestoreProject)
 	adm.Handle("POST /admin/projects/{id}/image", h.Admin.AdminUploadProjectImage)
 	adm.Handle("PATCH /admin/projects/reorder", h.Admin.AdminReorderProjects)

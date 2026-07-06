@@ -6,13 +6,14 @@ import { getLegalPage } from '../api/client';
 import { useLocale } from '../context/LocaleContext';
 
 interface Props {
-  type: 'impressum' | 'privacy' | 'refund';
+  type: 'impressum' | 'privacy' | 'refund' | 'terms';
 }
 
 const legalConfig = {
   impressum: { slug: 'impressum', titleKey: 'legal.impressum_title' },
   privacy: { slug: 'privacy', titleKey: 'legal.privacy_title' },
   refund: { slug: 'refund-policy', titleKey: 'legal.refund_title' },
+  terms: { slug: 'terms', titleKey: 'legal.terms_title' },
 } as const;
 
 export default function LegalPage({ type }: Props) {

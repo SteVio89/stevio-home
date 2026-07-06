@@ -4,8 +4,10 @@ import {
   adminListProjects,
   adminDeleteProject,
   adminRestoreProject,
+  adminPermanentDeleteProject,
   adminReorderProjects,
   adminDetachCommerce,
+  APIError,
   type AdminProject,
 } from '../../api/client';
 import PageHeader from '../../components/PageHeader';
@@ -18,6 +20,7 @@ export default function AdminProjects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminProject | null>(null);
+  const [permanentTarget, setPermanentTarget] = useState<AdminProject | null>(null);
   const [detachTarget, setDetachTarget] = useState<AdminProject | null>(null);
   const { addToast } = useToast();
 
@@ -53,6 +56,21 @@ export default function AdminProjects() {
     } catch {
       addToast('Failed to restore project', 'error');
     }
+  }
+
+  async function handlePermanentDelete(project: AdminProject) {
+    try {
+      await adminPermanentDeleteProject(project.id);
+      setProjects(prev => prev.filter(p => p.id !== project.id));
+      addToast('Project permanently deleted', 'success');
+    } catch (err) {
+      if (err instanceof APIError && err.status === 409) {
+        addToast('Project has sales history and cannot be permanently deleted', 'error');
+      } else {
+        addToast('Failed to permanently delete project', 'error');
+      }
+    }
+    setPermanentTarget(null);
   }
 
   async function handleDetach(project: AdminProject) {
@@ -117,6 +135,17 @@ export default function AdminProjects() {
           danger
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {permanentTarget && (
+        <ConfirmModal
+          title="Delete Permanently"
+          message="Permanently delete this project, its images and translations? This cannot be undone. Projects with sales history are refused."
+          confirmLabel="Delete permanently"
+          danger
+          onConfirm={() => handlePermanentDelete(permanentTarget)}
+          onCancel={() => setPermanentTarget(null)}
         />
       )}
 
@@ -210,12 +239,20 @@ export default function AdminProjects() {
                 <td>
                   <div className="actions">
                     {project.deleted_at ? (
-                      <button
-                        className="btn btn-secondary btn-small"
-                        onClick={() => handleRestore(project.id)}
-                      >
-                        Restore
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-secondary btn-small"
+                          onClick={() => handleRestore(project.id)}
+                        >
+                          Restore
+                        </button>
+                        <button
+                          className="btn btn-danger btn-small"
+                          onClick={() => setPermanentTarget(project)}
+                        >
+                          Delete permanently
+                        </button>
+                      </>
                     ) : (
                       <>
                         <Link

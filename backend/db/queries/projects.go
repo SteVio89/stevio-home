@@ -3,10 +3,16 @@ package queries
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"strings"
 
 	"github.com/SteVio89/stevio-home/db/models"
 	"github.com/SteVio89/stevio-home/dbutil"
 )
+
+// ErrProjectHasOrders is returned by HardDeleteProject when the project's app
+// has order history, which must be retained (FK RESTRICT chain + legal retention).
+var ErrProjectHasOrders = errors.New("project has orders; cannot be permanently deleted")
 
 // projectColumns is the canonical column list for project SELECTs (8 cols).
 const projectColumns = `id, slug, image_url, external_url, position, has_detail_page, created_at, deleted_at`
@@ -206,6 +212,100 @@ func RestoreProject(ctx context.Context, db *sql.DB, id string) error {
 		UPDATE projects SET deleted_at = NULL
 		WHERE id = $1 AND deleted_at IS NOT NULL`, id)
 	return err
+}
+
+// HardDeleteProject permanently removes a project and everything that hangs off
+// it, in a single transaction. It refuses (ErrProjectHasOrders) if the project's
+// app has any orders, so sales/invoice records are never destroyed. The caller
+// passes the entity-type constants (common.EntityTypeProject / ...ProjectImage)
+// to avoid an import cycle. Returns the assets-relative file paths of images to
+// unlink from disk after the transaction commits.
+func HardDeleteProject(ctx context.Context, db *sql.DB, id, projectEntityType, imageEntityType string) ([]string, error) {
+	var filePaths []string
+	var imageIDs []string
+	err := WithTx(ctx, db, func(tx *sql.Tx) error {
+		// 1. Guard: any orders under this project's app(s) (incl. soft-deleted apps)?
+		var orderCount int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM orders WHERE app_id IN (SELECT id FROM apps WHERE project_id = $1)`,
+			id).Scan(&orderCount); err != nil {
+			return err
+		}
+		if orderCount > 0 {
+			return ErrProjectHasOrders
+		}
+
+		// 2. Collect gallery image rows (IDs for translation cleanup, file paths for disk).
+		rows, err := tx.QueryContext(ctx,
+			`SELECT id, file_path FROM project_images WHERE project_id = $1`, id)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var imgID, fp string
+			if err := rows.Scan(&imgID, &fp); err != nil {
+				_ = rows.Close()
+				return err
+			}
+			imageIDs = append(imageIDs, imgID)
+			if fp != "" {
+				filePaths = append(filePaths, fp)
+			}
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		_ = rows.Close()
+
+		// Primary card image, only when it's a locally-uploaded /media file.
+		var imageURL string
+		if err := tx.QueryRowContext(ctx, `SELECT image_url FROM projects WHERE id = $1`, id).Scan(&imageURL); err != nil {
+			return err
+		}
+		if rel, ok := strings.CutPrefix(imageURL, "/media/"); ok {
+			filePaths = append(filePaths, rel)
+		}
+
+		// 3. entity_translations has no FK to projects — purge manually. Image alt-text
+		//    translations first, then the project's own title/tagline/description.
+		if len(imageIDs) > 0 {
+			// entity_type = $1, image IDs start at $2.
+			args := make([]any, 0, len(imageIDs)+1)
+			args = append(args, imageEntityType)
+			for _, imgID := range imageIDs {
+				args = append(args, imgID)
+			}
+			if _, err := tx.ExecContext(ctx,
+				`DELETE FROM entity_translations WHERE entity_type = $1 AND entity_id IN (`+dbutil.InPlaceholders(len(imageIDs), 1)+`)`,
+				args...); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM entity_translations WHERE entity_type = $1 AND entity_id = $2`,
+			projectEntityType, id); err != nil {
+			return err
+		}
+
+		// 4. Delete the app (app_versions cascade; no licenses exist without orders),
+		//    then the project (project_images rows cascade).
+		if _, err := tx.ExecContext(ctx, `DELETE FROM apps WHERE project_id = $1`, id); err != nil {
+			return err
+		}
+		res, err := tx.ExecContext(ctx, `DELETE FROM projects WHERE id = $1`, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return sql.ErrNoRows
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return filePaths, nil
 }
 
 // UpdateProjectPosition sets the position of a project within a transaction.

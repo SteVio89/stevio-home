@@ -83,6 +83,8 @@ function AppShell() {
                 <Route path="privacy" element={<LegalPage type="privacy" />} />
                 <Route path="widerruf" element={<LegalPage type="refund" />} />
                 <Route path="refund-policy" element={<LegalPage type="refund" />} />
+                <Route path="agb" element={<LegalPage type="terms" />} />
+                <Route path="terms" element={<LegalPage type="terms" />} />
                 <Route path="login" element={<Login />} />
                 <Route path="auth/verify" element={<VerifyToken />} />
                 <Route path="*" element={<MaintenanceWall />} />
@@ -161,6 +163,8 @@ function AppShell() {
               <Route path="privacy" element={<LegalPage type="privacy" />} />
               <Route path="widerruf" element={<LegalPage type="refund" />} />
               <Route path="refund-policy" element={<LegalPage type="refund" />} />
+              <Route path="agb" element={<LegalPage type="terms" />} />
+              <Route path="terms" element={<LegalPage type="terms" />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -201,6 +205,7 @@ function SiteFooterFallback({ shopName }: { shopName: string }) {
         <Link to={`/${locale}/impressum`}>{t('footer.impressum')}</Link>
         <Link to={`/${locale}/datenschutz`}>{t('footer.privacy')}</Link>
         <Link to={`/${locale}/widerruf`}>{t('footer.refund_policy')}</Link>
+        <Link to={`/${locale}/agb`}>{t('footer.terms')}</Link>
         <Link to={`/${locale}/`} aria-label={`${shopName} home`}>
           <img src="/stevio-logo.svg" alt="" className="site-footer-logo" />
         </Link>

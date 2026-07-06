@@ -11,10 +11,12 @@ export default function AdminLegalPages() {
   const [impressum, setImpressum] = useState<Record<string, string>>({});
   const [privacy, setPrivacy] = useState<Record<string, string>>({});
   const [refund, setRefund] = useState<Record<string, string>>({});
+  const [terms, setTerms] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingImpressum, setSavingImpressum] = useState(false);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
   const [savingRefund, setSavingRefund] = useState(false);
+  const [savingTerms, setSavingTerms] = useState(false);
 
   // Set initial locale once loaded
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function AdminLegalPages() {
 
   useEffect(() => {
     if (locales.length === 0) return;
-    const pageKeys = ['impressum', 'privacy_policy', 'refund_policy'] as const;
+    const pageKeys = ['impressum', 'privacy_policy', 'refund_policy', 'terms_of_use'] as const;
     Promise.all(
       locales.flatMap((loc) =>
         pageKeys.map((key) =>
@@ -37,14 +39,17 @@ export default function AdminLegalPages() {
         const imp: Record<string, string> = {};
         const priv: Record<string, string> = {};
         const ref: Record<string, string> = {};
+        const trm: Record<string, string> = {};
         for (const { code, key, content } of results) {
           if (key === 'impressum') imp[code] = content;
           else if (key === 'privacy_policy') priv[code] = content;
           else if (key === 'refund_policy') ref[code] = content;
+          else if (key === 'terms_of_use') trm[code] = content;
         }
         setImpressum(imp);
         setPrivacy(priv);
         setRefund(ref);
+        setTerms(trm);
       })
       .catch((err) => addToast(err instanceof APIError ? err.message : 'Failed to load legal content', 'error'))
       .finally(() => setLoading(false));
@@ -89,6 +94,20 @@ export default function AdminLegalPages() {
       addToast(err instanceof APIError ? err.message : 'Failed to save Widerrufsbelehrung', 'error');
     } finally {
       setSavingRefund(false);
+    }
+  }
+
+  async function handleSaveTerms(ev: React.FormEvent) {
+    ev.preventDefault();
+    setSavingTerms(true);
+    try {
+      await adminUpsertPageTranslation('terms_of_use', activeLocale, { content: terms[activeLocale] ?? '' });
+      const label = locales.find(l => l.code === activeLocale)?.name ?? activeLocale;
+      addToast(`Terms of Use (${label}) saved.`, 'success');
+    } catch (err) {
+      addToast(err instanceof APIError ? err.message : 'Failed to save Terms of Use', 'error');
+    } finally {
+      setSavingTerms(false);
     }
   }
 
@@ -188,6 +207,33 @@ export default function AdminLegalPages() {
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={savingRefund}>
               {savingRefund ? 'Saving…' : `Save Widerrufsbelehrung (${localeLabel})`}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="admin-section">
+        <div className="admin-section-header">
+          <h2>Terms of Use ({localeLabel})</h2>
+        </div>
+        <p className="admin-section-description">
+          Write your Terms of Use (AGB) in Markdown.
+        </p>
+        <form onSubmit={handleSaveTerms} className="admin-form">
+          <div className="form-group">
+            <label htmlFor="terms-content">Content (Markdown)</label>
+            <textarea
+              id="terms-content"
+              className="legal-content-textarea"
+              value={terms[activeLocale] ?? ''}
+              onChange={(e) => setTerms((prev) => ({ ...prev, [activeLocale]: e.target.value }))}
+              rows={20}
+              spellCheck={false}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={savingTerms}>
+              {savingTerms ? 'Saving…' : `Save Terms of Use (${localeLabel})`}
             </button>
           </div>
         </form>

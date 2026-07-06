@@ -15,10 +15,11 @@ var allowedPageKeys = map[string]bool{
 	"impressum":      true,
 	"privacy_policy": true,
 	"refund_policy":  true,
+	"terms_of_use":   true,
 }
 
 // knownPageKeys for deterministic iteration in list-all.
-var knownPageKeys = []string{"hero", "impressum", "privacy_policy", "refund_policy"}
+var knownPageKeys = []string{"hero", "impressum", "privacy_policy", "refund_policy", "terms_of_use"}
 
 // pageKeyFieldLimits: max chars per field value, keyed by page_key.
 // Hero: 2000 chars. Legal: 100,000 chars.
@@ -27,6 +28,7 @@ var pageKeyFieldLimits = map[string]int{
 	"impressum":      100_000,
 	"privacy_policy": 100_000,
 	"refund_policy":  100_000,
+	"terms_of_use":   100_000,
 }
 
 // AdminListPageTranslations returns all page translations across all known page keys.

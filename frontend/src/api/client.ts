@@ -549,6 +549,10 @@ export function adminRestoreDiscountCode(id: string): Promise<void> {
   return request<void>(`/admin/discount-codes/${id}/restore`, { method: 'PATCH' });
 }
 
+export function adminPermanentDeleteDiscountCode(id: string): Promise<void> {
+  return request<void>(`/admin/discount-codes/${id}/permanent`, { method: 'DELETE' });
+}
+
 // ── Auto discounts — admin ─────────────────────────────────────────────────
 
 export interface AutoDiscount {
@@ -670,7 +674,7 @@ export function getPublicConfig(): Promise<SiteConfig> {
 
 // ── Legal pages — public ───────────────────────────────────────────────────
 
-export function getLegalPage(slug: 'impressum' | 'privacy' | 'refund-policy'): Promise<{ html: string }> {
+export function getLegalPage(slug: 'impressum' | 'privacy' | 'refund-policy' | 'terms'): Promise<{ html: string }> {
   return request<{ html: string }>(`/legal/${slug}`);
 }
 
@@ -1037,6 +1041,10 @@ export function adminDeleteProject(id: string): Promise<void> {
 
 export function adminRestoreProject(id: string): Promise<void> {
   return request<void>(`/admin/projects/${id}/restore`, { method: 'POST' });
+}
+
+export function adminPermanentDeleteProject(id: string): Promise<void> {
+  return request<void>(`/admin/projects/${id}/permanent`, { method: 'DELETE' });
 }
 
 export function adminReorderProjects(positions: Record<string, number>): Promise<void> {

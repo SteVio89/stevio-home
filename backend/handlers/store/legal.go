@@ -23,6 +23,10 @@ func (h *StoreHandler) GetRefundPolicy(c *app.Ctx) error {
 	return h.serveLegalPage(c, "refund_policy")
 }
 
+func (h *StoreHandler) GetTermsOfUse(c *app.Ctx) error {
+	return h.serveLegalPage(c, "terms_of_use")
+}
+
 func (h *StoreHandler) serveLegalPage(c *app.Ctx, pageKey string) error {
 	ctx := c.R.Context()
 	loc := c.Lang()

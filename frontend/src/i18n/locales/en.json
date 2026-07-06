@@ -7,6 +7,7 @@
   "footer.impressum": "Imprint",
   "footer.privacy": "Privacy",
   "footer.refund_policy": "Refund Policy",
+  "footer.terms": "Terms of Use",
 
   "project.back": "← Back to Store",
   "project.about": "About",
@@ -106,6 +107,7 @@
   "legal.impressum_title": "Imprint",
   "legal.privacy_title": "Privacy Policy",
   "legal.refund_title": "Refund Policy",
+  "legal.terms_title": "Terms of Use",
   "legal.loading": "Loading…",
   "legal.error": "Content temporarily unavailable.",
   "legal.back": "Home",

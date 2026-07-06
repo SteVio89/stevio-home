@@ -130,6 +130,19 @@ func (h *AdminHandler) AdminDeleteDiscountCode(c *app.Ctx) error {
 	return c.NoContent()
 }
 
+// AdminHardDeleteDiscountCode permanently deletes an already-archived code.
+func (h *AdminHandler) AdminHardDeleteDiscountCode(c *app.Ctx) error {
+	id := c.Param("id")
+	if err := queries.HardDeleteDiscountCode(c.R.Context(), c.DB().DB, id); err != nil {
+		if errors.Is(err, queries.ErrDiscountNotFound) {
+			return apierr.ErrNotFound()
+		}
+		h.log.Printf("admin: permanently delete discount code %q: %v", id, err)
+		return apierr.ErrInternal()
+	}
+	return c.NoContent()
+}
+
 func (h *AdminHandler) AdminRestoreDiscountCode(c *app.Ctx) error {
 	id := c.Param("id")
 	if err := queries.RestoreDiscountCode(c.R.Context(), c.DB().DB, id); err != nil {
