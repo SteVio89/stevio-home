@@ -71,10 +71,13 @@ func (h *AdminHandler) AdminIssueLicense(c *app.Ctx) error {
 	emailHash := crypto.HashEmail(req.Email, h.cfg.EmailHashSalt)
 	sessionID := "manual-" + dbutil.NewID()
 
+	// Manual issue has no discount, so the original price is the price paid.
+	snapshot := queries.OrderDiscountSnapshot{OriginalPriceCents: &req.PriceCents}
+
 	var licenseKey string
 	err = queries.WithTx(ctx, c.DB().DB, func(tx *sql.Tx) error {
 		order, err := queries.InsertOrder(ctx, tx, sessionID, emailHash, commerceApp.ID,
-			req.PriceCents, nil, nil, queries.OrderDiscountSnapshot{}, "")
+			req.PriceCents, nil, nil, snapshot, "")
 		if err != nil {
 			return err
 		}
