@@ -1,5 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { getPublicConfig, setMaintenanceListener } from '../api/client';
+import { createContext, useContext } from 'react';
 import type { LocaleInfo } from '../i18n/useT';
 
 export interface SiteConfig {
@@ -21,7 +20,7 @@ const defaultLocales: LocaleInfo[] = [
   { code: 'en', name: 'English', is_default: false },
 ];
 
-const defaults: SiteConfig = {
+export const defaults: SiteConfig = {
   currency_symbol: '€',
   currency_code: 'EUR',
   site_name: 'My Store',
@@ -36,46 +35,6 @@ const defaults: SiteConfig = {
 };
 
 export const SiteConfigContext = createContext<SiteConfig>(defaults);
-
-export function SiteConfigProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<SiteConfig>(defaults);
-
-  // Force maintenance mode on when any API call returns a 503 maintenance response.
-  useEffect(() => {
-    setMaintenanceListener(() => {
-      setConfig(prev => ({ ...prev, maintenance_mode: true }));
-    });
-    return () => setMaintenanceListener(null);
-  }, []);
-
-  useEffect(() => {
-    getPublicConfig()
-      .then((raw) =>
-        setConfig({
-          currency_symbol: raw.currency_symbol,
-          currency_code: raw.currency_code,
-          site_name: raw.site_name,
-          maintenance_mode: raw.maintenance_mode,
-          payment_enabled: raw.payment_enabled,
-          payment_provider: raw.payment_provider ?? '',
-          paddle_client_token: raw.paddle_client_token ?? '',
-          paddle_environment: raw.paddle_environment ?? 'production',
-          max_activations: raw.max_activations,
-          base_url: raw.base_url,
-          locales: Array.isArray(raw.locales) && raw.locales.length > 0
-            ? raw.locales
-            : defaultLocales,
-        })
-      )
-      .catch(() => {/* keep defaults on error */});
-  }, []);
-
-  return (
-    <SiteConfigContext.Provider value={config}>
-      {children}
-    </SiteConfigContext.Provider>
-  );
-}
 
 export function useSiteConfig(): SiteConfig {
   return useContext(SiteConfigContext);

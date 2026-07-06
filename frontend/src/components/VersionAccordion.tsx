@@ -13,10 +13,9 @@ export function VersionAccordion({ slug }: VersionAccordionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // Reset happens via remount: the parent keys this component on `slug`, so a
+  // slug change mounts a fresh instance with the initial loading/empty state.
   useEffect(() => {
-    setLoading(true);
-    setError(false);
-    setVersions(null);
     getProjectVersions(slug)
       .then((vs) => {
         setVersions(vs);

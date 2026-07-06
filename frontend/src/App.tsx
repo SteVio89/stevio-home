@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AuthProvider } from './context/AuthContext';
-import { useSiteConfig, SiteConfigProvider } from './context/SiteConfigContext';
-import { ToastProvider } from './context/ToastContext';
-import { LocaleProvider, useLocale } from './context/LocaleContext';
+import { AuthProvider } from './context/AuthProvider';
+import { useSiteConfig } from './context/SiteConfigContext';
+import { SiteConfigProvider } from './context/SiteConfigProvider';
+import { ToastProvider } from './context/ToastProvider';
+import { LocaleProvider } from './context/LocaleProvider';
+import { useLocale } from './context/LocaleContext';
 import { useAuth } from './context/AuthContext';
 import { localeFromPath } from './i18n/useT';
 import { DEFAULT_LOCALE } from './i18n';

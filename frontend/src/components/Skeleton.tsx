@@ -24,18 +24,22 @@ export default function Skeleton({ variant = 'text', width, height, count = 1 }:
   );
 }
 
+// Deterministic width cycle so skeleton bars look uneven without an impure Math.random() call.
+const SKELETON_WIDTHS = ['82%', '64%', '95%', '73%', '88%', '58%', '90%'];
+const skeletonWidth = (i: number) => SKELETON_WIDTHS[i % SKELETON_WIDTHS.length];
+
 export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
   return (
     <div className="skeleton-table">
       <div className="skeleton-table-header">
         {Array.from({ length: cols }, (_, i) => (
-          <div key={i} className="skeleton skeleton-text" style={{ width: `${60 + Math.random() * 40}%` }} />
+          <div key={i} className="skeleton skeleton-text" style={{ width: skeletonWidth(i) }} />
         ))}
       </div>
       {Array.from({ length: rows }, (_, r) => (
         <div key={r} className="skeleton-table-row">
           {Array.from({ length: cols }, (_, c) => (
-            <div key={c} className="skeleton skeleton-text" style={{ width: `${50 + Math.random() * 50}%` }} />
+            <div key={c} className="skeleton skeleton-text" style={{ width: skeletonWidth(r * cols + c) }} />
           ))}
         </div>
       ))}

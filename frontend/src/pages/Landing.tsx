@@ -93,24 +93,22 @@ export default function Landing() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const { currency_symbol: currencySymbol, site_name, base_url } = useSiteConfig();
+  const { currency_symbol: currencySymbol, base_url } = useSiteConfig();
   const { locale } = useLocale();
   const { t } = useTranslation();
 
   useDocumentHead({
-    title: hero?.headline ?? site_name,
+    // Home page: no title → tab shows just the site name.
     canonical: base_url ? `${base_url}/${locale}/` : undefined,
   });
 
   useEffect(() => {
-    setLoading(true);
-    setError(false);
-
     Promise.all([getHero(), getProjects(), listPublicSocialLinks()])
       .then(([heroData, projectsData, socialLinksData]) => {
         setHero(heroData);
         setProjects(projectsData);
         setSocialLinks(socialLinksData);
+        setError(false);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));

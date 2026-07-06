@@ -30,7 +30,7 @@ test:
 
 # Run frontend tests
 test-frontend:
-    cd frontend && npx vitest run && npm test && npm audit
+    cd frontend && npm run lint && npx vitest run && npm audit
 
 # Run all tests (backend compile-only + frontend)
 test-all: test test-frontend

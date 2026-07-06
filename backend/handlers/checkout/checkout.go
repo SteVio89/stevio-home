@@ -339,7 +339,7 @@ func (h *CheckoutHandler) fulfillLicense(ctx context.Context, tx *sql.Tx, purcha
 		return h.fulfillInstallPlus(ctx, tx, orderID, appID, emailHash, maxActivations, defaultLocale)
 	}
 	licenseKey := queries.NewLicenseKey()
-	_, err := queries.InsertLicense(ctx, tx, licenseKey, orderID, appID, nil)
+	_, err := queries.InsertLicense(ctx, tx, licenseKey, orderID, appID, &maxActivations)
 	return err
 }
 

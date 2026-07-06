@@ -34,7 +34,6 @@ export default function AdminOrders() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     const params: Record<string, string> = {
       page: String(page),
       per_page: String(PER_PAGE),

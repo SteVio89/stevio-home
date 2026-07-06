@@ -297,7 +297,7 @@ export default function ProjectDetail() {
             {commerce && (
               <section className="app-detail-section">
                 <h2>{t('commerce.version_history')}</h2>
-                <VersionAccordion slug={project.slug} />
+                <VersionAccordion key={project.slug} slug={project.slug} />
               </section>
             )}
           </ErrorBoundary>

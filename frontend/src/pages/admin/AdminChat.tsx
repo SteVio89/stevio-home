@@ -16,7 +16,6 @@ export default function AdminChat() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
     adminListChats({ page: String(page), per_page: String(PER_PAGE) })
       .then((res) => {
         setItems(res.items);

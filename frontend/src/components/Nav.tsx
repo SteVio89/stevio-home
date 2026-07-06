@@ -26,7 +26,7 @@ export default function Nav() {
 
   const localeCodes = locales.map(l => l.code);
   const locale = localeFromPath(pathname, localeCodes);
-  const isLocaleRoute = new RegExp(`^\\/(${localeCodes.join('|')})(\\\/|$)`).test(pathname);
+  const isLocaleRoute = new RegExp(`^\\/(${localeCodes.join('|')})(\\/|$)`).test(pathname);
 
   function switchLocale(newCode: string) {
     localStorage.setItem('preferred_locale', newCode);

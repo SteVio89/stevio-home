@@ -82,7 +82,8 @@ func (h *AdminHandler) AdminIssueLicense(c *app.Ctx) error {
 			return err
 		}
 		key := queries.NewLicenseKey()
-		_, err = queries.InsertLicense(ctx, tx, key, order.ID, commerceApp.ID, nil)
+		maxActivations := c.Settings().GetInt(ctx, "max_activations", 3)
+		_, err = queries.InsertLicense(ctx, tx, key, order.ID, commerceApp.ID, &maxActivations)
 		if err != nil {
 			return err
 		}

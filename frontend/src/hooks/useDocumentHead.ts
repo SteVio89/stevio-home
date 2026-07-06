@@ -3,7 +3,8 @@ import { SiteConfigContext } from '../context/SiteConfigContext';
 import { DEFAULT_LOCALE } from '../i18n';
 
 export interface DocumentHeadOptions {
-  title: string;
+  /** Page name. Omit on the home page so the tab shows just the site name. */
+  title?: string;
   description?: string;
   canonical?: string;
   ogImage?: string;
@@ -50,7 +51,7 @@ export function useDocumentHead({
 }: DocumentHeadOptions) {
   const { site_name, base_url, locales } = useContext(SiteConfigContext);
   useEffect(() => {
-    const fullTitle = `${title} — ${site_name}`;
+    const fullTitle = title ? `${title} — ${site_name}` : site_name;
     const desc = description ?? '';
     const url = canonical ?? (base_url ? base_url + '/' : '/');
 
