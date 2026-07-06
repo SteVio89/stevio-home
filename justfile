@@ -5,7 +5,7 @@ default:
 
 # Local dev — build and start all services (Postgres + backend + frontend)
 up:
-    docker compose {{ dev_compose }} up --build -d
+    GIT_SHA=$(git rev-parse --short HEAD) docker compose {{ dev_compose }} up --build -d
 
 # Local dev — stop all services (preserves the Postgres volume)
 down:

@@ -9,6 +9,9 @@ COPY . .
 RUN npx vitest run
 RUN npm test
 RUN npm audit
+# Vite exposes VITE_-prefixed env vars on import.meta.env at build time.
+ARG GIT_SHA
+ENV VITE_GIT_SHA=$GIT_SHA
 RUN npm run build
 
 FROM nginx:alpine

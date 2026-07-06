@@ -210,7 +210,10 @@ function SiteFooterFallback({ shopName }: { shopName: string }) {
           <img src="/stevio-logo.svg" alt="" className="site-footer-logo" />
         </Link>
       </div>
-      <div className="site-footer-copy">&copy; {new Date().getFullYear()} {shopName}</div>
+      <div className="site-footer-copy">
+        &copy; {new Date().getFullYear()} {shopName}
+        {import.meta.env.VITE_GIT_SHA && ` · ${import.meta.env.VITE_GIT_SHA.slice(0, 7)}`}
+      </div>
     </footer>
   );
 }
