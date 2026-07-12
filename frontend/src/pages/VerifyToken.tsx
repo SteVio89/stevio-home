@@ -17,7 +17,6 @@ export default function VerifyToken() {
   // Run-once-on-mount: token verification must fire exactly once per page load
   // (the token is single-use; re-running would always 401). The `attempted`
   // ref guards against React 18 strict-mode double invocation.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (attempted.current) return;
     attempted.current = true;
@@ -36,6 +35,7 @@ export default function VerifyToken() {
       .catch(() => {
         setError(t('login.error_token_invalid'));
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) {
