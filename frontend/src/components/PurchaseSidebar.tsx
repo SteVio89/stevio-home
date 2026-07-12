@@ -35,8 +35,14 @@ export function PurchaseSidebar({
 }: PurchaseSidebarProps) {
   const { t } = useTranslation();
   const { currency_symbol, payment_provider } = useSiteConfig();
-  // Only Paddle carries a trust line. Mock and Disabled render none.
-  const trustKey = payment_provider === 'paddle' ? 'commerce.trust_paddle' : '';
+  // Merchant-of-Record providers carry a buyer-protection trust line. Mock and
+  // Disabled render none.
+  const trustKey =
+    payment_provider === 'paddle'
+      ? 'commerce.trust_paddle'
+      : payment_provider === 'polar'
+        ? 'commerce.trust_polar'
+        : '';
 
   // coming_soon: simplified view — no buy button, no trust section
   if (commerce.purchase_mode === 'coming_soon') {

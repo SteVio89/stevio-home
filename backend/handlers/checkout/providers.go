@@ -2,15 +2,18 @@ package checkout
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
 	"github.com/SteVio89/stevio-home/apierr"
 	"github.com/SteVio89/stevio-home/app"
 	"github.com/SteVio89/stevio-home/crypto"
+	"github.com/SteVio89/stevio-home/db/queries"
 	"github.com/SteVio89/stevio-home/payment"
 	"github.com/SteVio89/stevio-home/payment/mock"
 	"github.com/SteVio89/stevio-home/payment/paddle"
+	"github.com/SteVio89/stevio-home/payment/polar"
 )
 
 // errPaymentNotConfigured is returned when the active provider is known but
@@ -55,11 +58,39 @@ func (h *CheckoutHandler) buildProvider(ctx context.Context, c *app.Ctx) (paymen
 		}
 		return paddle.New(apiKey, hookSec, env), nil
 
+	case "polar":
+		apiKey, err := h.loadSecret(ctx, c, "polar_api_key")
+		if err != nil {
+			return nil, fmt.Errorf("decrypt polar_api_key: %w", err)
+		}
+		hookSec, err := h.loadSecret(ctx, c, "polar_webhook_secret")
+		if err != nil {
+			return nil, fmt.Errorf("decrypt polar_webhook_secret: %w", err)
+		}
+		env, _ := c.Settings().Get(ctx, "polar_environment")
+		if apiKey == "" || hookSec == "" {
+			return nil, errPaymentNotConfigured
+		}
+		return polar.New(apiKey, hookSec, env, polarProductStore{db: c.DB().DB}), nil
+
 	case "mock":
 		return mock.New(h.cfg.BaseURL, h.cfg.SigningKeySecret), nil
 	}
 
 	return nil, payment.ErrProviderUnknown
+}
+
+// polarProductStore adapts db/queries to polar.ProductStore, backing the lazy
+// app → Polar-product-id cache with the provider_products table. Kept here (not
+// in the polar package) so the provider stays free of DB-query coupling.
+type polarProductStore struct{ db *sql.DB }
+
+func (s polarProductStore) GetProductID(ctx context.Context, appID string) (string, error) {
+	return queries.GetProviderProductID(ctx, s.db, "polar", appID)
+}
+
+func (s polarProductStore) SaveProductID(ctx context.Context, appID, productID string) error {
+	return queries.UpsertProviderProduct(ctx, s.db, "polar", appID, productID)
 }
 
 // loadSecret reads an encrypted setting and decrypts it. An unset (empty)

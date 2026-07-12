@@ -23,6 +23,7 @@ import (
 	"github.com/SteVio89/stevio-home/payment"
 	"github.com/SteVio89/stevio-home/payment/mock"
 	"github.com/SteVio89/stevio-home/payment/paddle"
+	"github.com/SteVio89/stevio-home/payment/polar"
 )
 
 func main() {
@@ -172,6 +173,7 @@ func main() {
 	// middleware.MaintenanceChecker.isEnabled for where that coupling is enforced.
 	payments := payment.Registry{
 		"paddle": paddle.New("", "", ""),
+		"polar":  polar.New("", "", "", nil),
 		"mock":   mock.New(cfg.BaseURL, cfg.SigningKeySecret),
 	}
 
