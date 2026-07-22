@@ -85,12 +85,12 @@ func (h *CheckoutHandler) buildProvider(ctx context.Context, c *app.Ctx) (paymen
 // in the polar package) so the provider stays free of DB-query coupling.
 type polarProductStore struct{ db *sql.DB }
 
-func (s polarProductStore) GetProductID(ctx context.Context, appID string) (string, error) {
-	return queries.GetProviderProductID(ctx, s.db, "polar", appID)
+func (s polarProductStore) GetProductID(ctx context.Context, appID, environment string) (string, error) {
+	return queries.GetProviderProductID(ctx, s.db, "polar", appID, environment)
 }
 
-func (s polarProductStore) SaveProductID(ctx context.Context, appID, productID string) error {
-	return queries.UpsertProviderProduct(ctx, s.db, "polar", appID, productID)
+func (s polarProductStore) SaveProductID(ctx context.Context, appID, environment, productID string) error {
+	return queries.UpsertProviderProduct(ctx, s.db, "polar", appID, environment, productID)
 }
 
 // loadSecret reads an encrypted setting and decrypts it. An unset (empty)

@@ -62,10 +62,13 @@ var ErrSignatureInvalid = errors.New("polar: webhook signature invalid")
 // construction (the checkout handler backs it with the provider_products table)
 // so the provider stays free of direct DB coupling and is unit-testable.
 type ProductStore interface {
-	// GetProductID returns the cached Polar product id for an app, or "" if none.
-	GetProductID(ctx context.Context, appID string) (string, error)
-	// SaveProductID records the Polar product id created for an app.
-	SaveProductID(ctx context.Context, appID, productID string) error
+	// GetProductID returns the cached Polar product id for an app in the given
+	// environment, or "" if none. Sandbox and production are separate Polar
+	// catalogs, so the environment is part of the cache key.
+	GetProductID(ctx context.Context, appID, environment string) (string, error)
+	// SaveProductID records the Polar product id created for an app in the given
+	// environment.
+	SaveProductID(ctx context.Context, appID, environment, productID string) error
 }
 
 // Provider implements payment.Provider for Polar.
@@ -187,7 +190,7 @@ func (p *Provider) CreateCheckout(ctx context.Context, params payment.CheckoutPa
 // Polar products; the store's upsert keeps the latest and the other is a
 // harmless orphan in the Polar dashboard. Not worth locking for.
 func (p *Provider) ensureProduct(ctx context.Context, params payment.CheckoutParams, currency string) (string, error) {
-	id, err := p.store.GetProductID(ctx, params.AppID)
+	id, err := p.store.GetProductID(ctx, params.AppID, p.environment)
 	if err != nil {
 		return "", fmt.Errorf("polar: lookup product for app %s: %w", params.AppID, err)
 	}
@@ -216,7 +219,7 @@ func (p *Provider) ensureProduct(ctx context.Context, params payment.CheckoutPar
 	if out.ID == "" {
 		return "", errors.New("polar: product response missing id")
 	}
-	if err := p.store.SaveProductID(ctx, params.AppID, out.ID); err != nil {
+	if err := p.store.SaveProductID(ctx, params.AppID, p.environment, out.ID); err != nil {
 		return "", fmt.Errorf("polar: save product mapping: %w", err)
 	}
 	return out.ID, nil
