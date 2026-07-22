@@ -290,16 +290,19 @@ func (p *Provider) verifyWebhook(body []byte, headers http.Header) error {
 	return ErrSignatureInvalid
 }
 
-// decodeSecret resolves a Standard Webhooks symmetric secret to its raw HMAC
-// key: strip an optional "whsec_" prefix, then base64-decode. If the remainder
-// isn't valid base64 (an admin pasted a raw custom secret), fall back to its
-// bytes so verification still works against whatever Polar signs with.
+// decodeSecret resolves the configured webhook secret to its raw HMAC key.
+//
+// Although Polar follows Standard Webhooks (whose secrets are "whsec_"+base64
+// and are base64-decoded before use), Polar deviates in one crucial way: its
+// SDK base64-*encodes* the dashboard secret before handing it to the library,
+// which then base64-decodes it straight back — so Polar's effective HMAC key is
+// the raw UTF-8 bytes of the secret string exactly as shown in the dashboard.
+// We must therefore use the secret verbatim: base64-decoding it (the plain
+// Standard Webhooks behaviour) yields the wrong key and every signature fails
+// whenever the secret happens to be valid base64, which Polar's alphanumeric
+// secrets usually are. See polar-js/src/webhooks.ts (validateEvent).
 func decodeSecret(secret string) []byte {
-	s := strings.TrimPrefix(secret, "whsec_")
-	if b, err := base64.StdEncoding.DecodeString(s); err == nil {
-		return b
-	}
-	return []byte(s)
+	return []byte(secret)
 }
 
 func computeSignature(key []byte, id, ts string, body []byte) string {

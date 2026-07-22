@@ -140,15 +140,20 @@ func TestParseWebhook_StaleTimestamp(t *testing.T) {
 	}
 }
 
-// decodeSecret must accept a raw (non-base64) custom secret by falling back to
-// its bytes, so an admin who pastes an arbitrary string can still verify.
-func TestDecodeSecret_RawFallback(t *testing.T) {
+// decodeSecret must use the configured secret verbatim as the HMAC key, because
+// Polar signs with the raw bytes of the dashboard secret (it base64-encodes then
+// the library base64-decodes, cancelling out). Base64-decoding here would derive
+// the wrong key and break verification for any secret that is valid base64.
+func TestDecodeSecret_Verbatim(t *testing.T) {
+	// An arbitrary custom string is used byte-for-byte.
 	raw := "not+valid+base64+@@@"
 	if got := decodeSecret(raw); string(got) != raw {
-		t.Errorf("raw secret fallback: want %q, got %q", raw, string(got))
+		t.Errorf("raw secret: want %q, got %q", raw, string(got))
 	}
-	// A whsec_-prefixed base64 secret decodes to the underlying bytes.
-	if got := decodeSecret("whsec_" + base64.StdEncoding.EncodeToString([]byte("abc"))); string(got) != "abc" {
-		t.Errorf("base64 secret: want 'abc', got %q", string(got))
+	// A secret that happens to be valid base64 is NOT decoded — this is the case
+	// that previously broke real Polar deliveries.
+	b64 := base64.StdEncoding.EncodeToString([]byte("abc")) // "YWJj", valid base64
+	if got := decodeSecret(b64); string(got) != b64 {
+		t.Errorf("valid-base64 secret must stay verbatim: want %q, got %q", b64, string(got))
 	}
 }
