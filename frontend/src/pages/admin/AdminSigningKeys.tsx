@@ -21,6 +21,8 @@ export default function AdminSigningKeys() {
       .finally(() => setLoading(false));
   }
 
+  // Run-once-on-mount: load the current signing key.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadKey(); }, []);
 
   async function handleGenerate() {

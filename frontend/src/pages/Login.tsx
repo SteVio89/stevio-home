@@ -27,13 +27,13 @@ export default function Login() {
   // Run-once-on-mount: consume any ?error= search param the verify redirect
   // attached, surface it as a toast, then strip it from the URL. Re-running on
   // locale/toast changes would re-show stale errors.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const errCode = searchParams.get('error');
     if (errCode) {
       addToast(errorMessages[errCode] || t('login.error_internal'));
       navigate(`/${locale}/login`, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
