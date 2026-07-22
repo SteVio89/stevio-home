@@ -80,6 +80,21 @@ systemd:
             Environment=LOCKSMITHD_REBOOT_WINDOW_START=03:00
             Environment=LOCKSMITHD_REBOOT_WINDOW_LENGTH=2h
 
+    # Flatcar updates the OS via update-engine + locksmithd (reboot window above).
+    # It also ships systemd's native sysupdate units, but with only a placeholder
+    # noop.transfer definition — so systemd-sysupdate-reboot.service fails nightly
+    # ("Couldn't find any suitable installed versions") and shows up as a failed
+    # unit in the login MOTD. Mask the unused sysupdate path; real OS updates and
+    # reboots go through update-engine/locksmithd and are unaffected.
+    - name: systemd-sysupdate.timer
+      mask: true
+    - name: systemd-sysupdate-reboot.timer
+      mask: true
+    - name: systemd-sysupdate.service
+      mask: true
+    - name: systemd-sysupdate-reboot.service
+      mask: true
+
     # Flatcar ships Docker but not the Compose plugin (/usr is read-only). Install
     # it into the writable docker cli-plugins dirs so `docker compose` works.
     - name: docker-compose-install.service
