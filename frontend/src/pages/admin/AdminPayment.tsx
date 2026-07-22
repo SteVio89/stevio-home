@@ -3,16 +3,18 @@ import { adminGetSettings, adminUpdateSetting, APIError } from '../../api/client
 import PageHeader from '../../components/PageHeader';
 import Skeleton from '../../components/Skeleton';
 
-// The admin selects one of four rows. Paddle appears twice — once for each
-// environment — so the UX is flat, matching the "mock / sandbox-paddle /
-// real-paddle" three-tier framing. The value 'paddle:sandbox' is a compound
-// that we split into two settings (payment_provider + paddle_environment) on
-// save. Disabled maps to an empty payment_provider, which hides the buy button.
+// The admin selects one row. Paddle and Polar each appear twice — once per
+// environment — so the UX is flat. A compound value like 'paddle:sandbox' or
+// 'polar:production' is split into two settings (payment_provider +
+// <provider>_environment) on save. Disabled maps to an empty payment_provider,
+// which hides the buy button.
 const PROVIDERS = [
   { value: '', label: 'Disabled' },
   { value: 'mock', label: 'Mock (dev only)' },
   { value: 'paddle:sandbox', label: 'Paddle — Sandbox' },
   { value: 'paddle:production', label: 'Paddle — Production' },
+  { value: 'polar:sandbox', label: 'Polar — Sandbox' },
+  { value: 'polar:production', label: 'Polar — Production' },
 ];
 
 // Mirrors backend secretSetSentinel — when a secret is already configured,
@@ -29,10 +31,13 @@ function secretFromServer(raw: string | undefined): Secret {
   return { value: raw, set: true };
 }
 
-// Compose the compound dropdown value from the two backend settings.
-function composeProvider(paymentProvider: string, paddleEnv: string): string {
+// Compose the compound dropdown value from the backend settings.
+function composeProvider(paymentProvider: string, paddleEnv: string, polarEnv: string): string {
   if (paymentProvider === 'paddle') {
     return 'paddle:' + (paddleEnv === 'sandbox' ? 'sandbox' : 'production');
+  }
+  if (paymentProvider === 'polar') {
+    return 'polar:' + (polarEnv === 'sandbox' ? 'sandbox' : 'production');
   }
   return paymentProvider || '';
 }
@@ -41,6 +46,9 @@ function composeProvider(paymentProvider: string, paddleEnv: string): string {
 function decomposeProvider(compound: string): { provider: string; env: string } {
   if (compound.startsWith('paddle:')) {
     return { provider: 'paddle', env: compound.slice('paddle:'.length) };
+  }
+  if (compound.startsWith('polar:')) {
+    return { provider: 'polar', env: compound.slice('polar:'.length) };
   }
   return { provider: compound, env: '' };
 }
@@ -52,6 +60,8 @@ export default function AdminPayment() {
   // Client-side token is browser-safe (shipped to the frontend via /config), so
   // it is a plain field, not a masked Secret like the API key / webhook secret.
   const [paddleClientToken, setPaddleClientToken] = useState('');
+  const [polarApiKey, setPolarApiKey] = useState<Secret>(emptySecret);
+  const [polarWebhookSecret, setPolarWebhookSecret] = useState<Secret>(emptySecret);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -60,10 +70,14 @@ export default function AdminPayment() {
   useEffect(() => {
     adminGetSettings()
       .then((s) => {
-        setCompoundProvider(composeProvider(s.payment_provider ?? '', s.paddle_environment ?? ''));
+        setCompoundProvider(
+          composeProvider(s.payment_provider ?? '', s.paddle_environment ?? '', s.polar_environment ?? '')
+        );
         setPaddleApiKey(secretFromServer(s.paddle_api_key));
         setPaddleWebhookSecret(secretFromServer(s.paddle_webhook_secret));
         setPaddleClientToken(s.paddle_client_token ?? '');
+        setPolarApiKey(secretFromServer(s.polar_api_key));
+        setPolarWebhookSecret(secretFromServer(s.polar_webhook_secret));
       })
       .catch((err) => setError(err instanceof APIError ? err.message : 'Failed to load settings'))
       .finally(() => setLoading(false));
@@ -85,6 +99,11 @@ export default function AdminPayment() {
       if (paddleApiKey.value) patches.push(['paddle_api_key', paddleApiKey.value]);
       if (paddleWebhookSecret.value) patches.push(['paddle_webhook_secret', paddleWebhookSecret.value]);
     }
+    if (provider === 'polar') {
+      patches.push(['polar_environment', env || 'production']);
+      if (polarApiKey.value) patches.push(['polar_api_key', polarApiKey.value]);
+      if (polarWebhookSecret.value) patches.push(['polar_webhook_secret', polarWebhookSecret.value]);
+    }
 
     try {
       const results = await Promise.allSettled(
@@ -99,6 +118,8 @@ export default function AdminPayment() {
         setSuccess('Payment settings saved.');
         if (paddleApiKey.value) setPaddleApiKey({ value: '', set: true });
         if (paddleWebhookSecret.value) setPaddleWebhookSecret({ value: '', set: true });
+        if (polarApiKey.value) setPolarApiKey({ value: '', set: true });
+        if (polarWebhookSecret.value) setPolarWebhookSecret({ value: '', set: true });
       }
     } catch (err) {
       setError(err instanceof APIError ? err.message : 'Failed to save settings');
@@ -118,6 +139,7 @@ export default function AdminPayment() {
     s.set ? '(configured — leave blank to keep)' : '';
 
   const isPaddle = compoundProvider.startsWith('paddle:');
+  const isPolar = compoundProvider.startsWith('polar:');
 
   return (
     <div className="page">
@@ -197,6 +219,48 @@ export default function AdminPayment() {
                   <small>
                     From Paddle → Developer Tools → Authentication → Client-side tokens.
                     Browser-safe; used to open the in-page checkout overlay.
+                  </small>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isPolar && (
+            <>
+              <h3>Polar Configuration</h3>
+              <p className="admin-section-description">
+                Credentials are encrypted at rest with SIGNING_KEY_SECRET. Fields left blank keep their existing value.
+                Prices are sent to Polar per-checkout as ad-hoc prices, so you do <strong>not</strong> manage a catalog
+                there — a product is created automatically the first time each app is sold.
+              </p>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="polar-api-key">Access Token</label>
+                  <input
+                    id="polar-api-key"
+                    type="password"
+                    autoComplete="new-password"
+                    value={polarApiKey.value}
+                    onChange={(e) => setPolarApiKey({ value: e.target.value, set: polarApiKey.set })}
+                    placeholder={secretPlaceholder(polarApiKey)}
+                    maxLength={4096}
+                  />
+                  <small>Organization Access Token from Polar → Settings → Developers (starts with polar_oat_)</small>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="polar-webhook-secret">Webhook Secret</label>
+                  <input
+                    id="polar-webhook-secret"
+                    type="password"
+                    autoComplete="new-password"
+                    value={polarWebhookSecret.value}
+                    onChange={(e) => setPolarWebhookSecret({ value: e.target.value, set: polarWebhookSecret.set })}
+                    placeholder={secretPlaceholder(polarWebhookSecret)}
+                    maxLength={4096}
+                  />
+                  <small>
+                    From the Polar webhook endpoint you point at <code>/api/payment/webhook</code>. Subscribe to the
+                    <code> order.paid</code> and <code>order.refunded</code> events.
                   </small>
                 </div>
               </div>

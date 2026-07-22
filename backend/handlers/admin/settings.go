@@ -24,6 +24,9 @@ var validSettingKeys = map[string]bool{
 	"paddle_webhook_secret":      true,
 	"paddle_client_token":        true,
 	"paddle_environment":         true,
+	"polar_api_key":              true,
+	"polar_webhook_secret":       true,
+	"polar_environment":          true,
 	"maintenance_mode":           true,
 	"support_notification_email": true,
 	"chat_rate_limit":            true,
@@ -36,6 +39,8 @@ var validSettingKeys = map[string]bool{
 var secretSettingKeys = map[string]bool{
 	"paddle_api_key":        true,
 	"paddle_webhook_secret": true,
+	"polar_api_key":         true,
+	"polar_webhook_secret":  true,
 }
 
 // secretSetSentinel is what AdminGetSettings returns in place of the ciphertext
@@ -144,11 +149,11 @@ func (h *AdminHandler) validateSettingValue(key, value string) error {
 				return fmt.Errorf("unsupported payment provider")
 			}
 		}
-	case "paddle_api_key", "paddle_webhook_secret":
+	case "paddle_api_key", "paddle_webhook_secret", "polar_api_key", "polar_webhook_secret":
 		// Plaintext length cap applied above; nothing provider-specific to check.
-	case "paddle_environment":
+	case "paddle_environment", "polar_environment":
 		if value != "" && value != "sandbox" && value != "production" {
-			return fmt.Errorf("paddle_environment must be 'sandbox' or 'production'")
+			return fmt.Errorf("%s must be 'sandbox' or 'production'", key)
 		}
 	case "maintenance_mode":
 		if value != "0" && value != "1" {

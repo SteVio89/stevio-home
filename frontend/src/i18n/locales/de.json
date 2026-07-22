@@ -26,6 +26,7 @@
   "commerce.purchase_one_time": "Einmalkauf · Lebenslange Updates",
   "commerce.purchase_per_device": "Lizenz pro Gerät",
   "commerce.trust_paddle": "Zahlung wird von Paddle abgewickelt (Merchant of Record). Du bist durch deren Käuferschutz geschützt.",
+  "commerce.trust_polar": "Zahlung wird von Polar abgewickelt (Merchant of Record). Du bist durch deren Käuferschutz geschützt.",
   "commerce.trust_refund": "14-tägiges Widerrufsrecht",
   "commerce.system_requirements": "Systemanforderungen",
   "commerce.version_history": "Versionsverlauf",

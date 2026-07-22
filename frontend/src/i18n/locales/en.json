@@ -26,6 +26,7 @@
   "commerce.purchase_one_time": "One-time purchase · Lifetime updates",
   "commerce.purchase_per_device": "Per-device license",
   "commerce.trust_paddle": "Payment processed by Paddle (merchant of record). You're protected by their buyer protection.",
+  "commerce.trust_polar": "Payment processed by Polar (merchant of record). You're protected by their buyer protection.",
   "commerce.trust_refund": "14-day refund policy",
   "commerce.system_requirements": "System Requirements",
   "commerce.version_history": "Version History",

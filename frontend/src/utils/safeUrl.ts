@@ -31,6 +31,26 @@ export function isSafeCheckoutURL(raw: string): boolean {
   }
 }
 
+// Domain we permit a checkout redirect to leave the site for. Polar (a redirect
+// provider) hosts checkout on its own domain — sandbox.polar.sh in test,
+// polar.sh (or another polar.sh subdomain) in production. Restricting to
+// https + a Polar-owned host means a misbehaving backend response still can't
+// redirect the user to an arbitrary external site.
+function isPolarHost(host: string): boolean {
+  return host === 'polar.sh' || host.endsWith('.polar.sh');
+}
+
+// isSafeExternalCheckoutURL accepts only an absolute https Polar hosted-checkout
+// URL. Used for the Polar redirect flow.
+export function isSafeExternalCheckoutURL(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && isPolarHost(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 // isSafeDownloadURL accepts only the same-origin /api/downloads/file?token=…
 // shape returned by createDownloadToken. The URL constructor normalises ".."
 // segments, so "/api/downloads/../foo" resolves to "/foo" and is rejected.

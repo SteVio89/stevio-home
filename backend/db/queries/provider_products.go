@@ -1,0 +1,36 @@
+package queries
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+)
+
+// GetProviderProductID returns the cached external product id for a
+// (provider, app) pair, or "" if no mapping exists yet.
+func GetProviderProductID(ctx context.Context, db *sql.DB, provider, appID string) (string, error) {
+	var id string
+	err := db.QueryRowContext(ctx,
+		`SELECT external_product_id FROM provider_products WHERE provider = $1 AND app_id = $2`,
+		provider, appID,
+	).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// UpsertProviderProduct records (or replaces) the external product id created
+// for a (provider, app) pair.
+func UpsertProviderProduct(ctx context.Context, db *sql.DB, provider, appID, externalProductID string) error {
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO provider_products (provider, app_id, external_product_id)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (provider, app_id) DO UPDATE SET external_product_id = EXCLUDED.external_product_id`,
+		provider, appID, externalProductID,
+	)
+	return err
+}

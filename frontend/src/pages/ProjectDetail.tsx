@@ -16,7 +16,7 @@ import { useDocumentHead } from '../hooks/useDocumentHead';
 import { useAuth } from '../context/AuthContext';
 import { useSiteConfig } from '../context/SiteConfigContext';
 import { useLocale } from '../context/LocaleContext';
-import { isSafeCheckoutURL } from '../utils/safeUrl';
+import { isSafeCheckoutURL, isSafeExternalCheckoutURL } from '../utils/safeUrl';
 import { getPaddle, setPaddleEventHandler } from '../utils/paddle';
 import { CheckoutEventNames } from '@paddle/paddle-js';
 import WithdrawalConsentModal from '../components/WithdrawalConsentModal';
@@ -174,6 +174,17 @@ export default function ProjectDetail() {
           }
         });
         paddle.Checkout.open({ transactionId: session.transaction_id });
+        return;
+      }
+
+      if (payment_provider === 'polar') {
+        // Polar: redirect to its hosted checkout. Fulfillment happens via
+        // webhook; the success page verifies by session_id.
+        if (isSafeExternalCheckoutURL(session.url)) {
+          window.location.href = session.url;
+        } else {
+          setCheckoutError(t('commerce.checkout_error'));
+        }
         return;
       }
 
